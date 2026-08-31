@@ -1,0 +1,12 @@
+Source: joseflix-request
+Section: video
+Priority: optional
+Maintainer: Joseflix <joseflix@localhost>
+Standards-Version: 4.6.0
+Build-Depends: debhelper-compat (= 13)
+
+Package: joseflix-request
+Architecture: all
+Depends: ${misc:Depends}, python3, python3-gi, gir1.2-gtk-4.0
+Description: Gestor local de peticiones para Joseflix
+ Aplicación GTK para registrar y organizar peticiones de películas y series.

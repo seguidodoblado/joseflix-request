@@ -1,0 +1,3 @@
+joseflix_request.py usr/lib/joseflix-request
+debian/joseflix-launcher usr/bin
+debian/joseflix-request.desktop usr/share/applications
