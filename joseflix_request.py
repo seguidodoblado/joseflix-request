@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os, re, sqlite3, urllib.parse, urllib.request, json
 from pathlib import Path
-from PySide6.QtWidgets import QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QLineEdit,QComboBox,QPushButton,QListWidget,QListWidgetItem,QDialog,QFormLayout,QDialogButtonBox,QMessageBox,QTextEdit,QLabel,QMenu,QInputDialog
+from PySide6.QtWidgets import QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QLineEdit,QComboBox,QPushButton,QListWidget,QListWidgetItem,QDialog,QFormLayout,QDialogButtonBox,QMessageBox,QTextEdit,QLabel,QMenu,QInputDialog,QCompleter
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QPalette, QColor, QIcon, QPixmap
 from PySide6.QtCore import QSettings
@@ -39,8 +39,8 @@ def fetch(url):
    with urllib.request.urlopen('https://image.tmdb.org/t/p/w342'+poster,timeout=15) as r: Path(local).write_bytes(r.read())
  return {'tmdb_id':int(match.group(1)),'media_type':'Película' if p[0]=='movie' else 'Serie','title':x.get('title') or x.get('name',''),'year':(x.get('release_date') or x.get('first_air_date',''))[:4],'overview':x.get('overview',''),'poster_path':local,'tmdb_url':url}
 class Editor(QDialog):
- def __init__(s,p,r=None):
-  super().__init__(p); s.record=r; s.setWindowTitle('Editar petición' if r else 'Nueva petición'); s.resize(760,760); f=QFormLayout(s); title=QLabel(f"<h2>{r['title']} ({r['year'] or '—'})</h2>" if r else '<h2>Nueva petición</h2>'); title.setTextFormat(Qt.RichText); f.addRow(title); poster=QLabel(); poster.setAlignment(Qt.AlignCenter); poster.setMinimumHeight(220); poster.setMaximumHeight(300); poster.setPixmap(QPixmap(r['poster_path']).scaled(190,280,Qt.KeepAspectRatio,Qt.SmoothTransformation) if r and r['poster_path'] and Path(r['poster_path']).exists() else QPixmap()); overview=QLabel(r['overview'] if r else 'La sinopsis aparecerá después de consultar TMDB.'); overview.setWordWrap(True); overview.setAlignment(Qt.AlignTop|Qt.AlignLeft); overview.setMinimumWidth(430); preview=QHBoxLayout(); preview.addWidget(poster); preview.addWidget(overview,1); f.addRow(preview); s.url=QLineEdit(r['tmdb_url'] if r else ''); s.req=QLineEdit(r['requester'] if r else ''); s.st=QComboBox(); s.st.addItems(STATUS_LABELS); s.st.setCurrentText(next((x for x in STATUS_LABELS if r and x.endswith(r['status'])), '📨 Solicitado')); s.mt=QComboBox(); s.mt.addItems(['🎬 Película','📺 Serie']); s.mt.setCurrentText(('🎬 ' if not r or r['media_type']=='Película' else '📺 ')+(r['media_type'] if r else 'Película')); s.me=QComboBox(); s.me.addItems(METHODS); s.me.setCurrentText(r['download_method'] if r else 'DD'); s.link=QLineEdit(r['download_url'] if r else ''); s.notes=QTextEdit(r['notes'] if r else '')
+ def __init__(s,p,r=None,requesters=None):
+  super().__init__(p); s.record=r; s.setWindowTitle('Editar petición' if r else 'Nueva petición'); s.resize(760,760); f=QFormLayout(s); title=QLabel(f"<h2>{r['title']} ({r['year'] or '—'})</h2>" if r else '<h2>Nueva petición</h2>'); title.setTextFormat(Qt.RichText); f.addRow(title); poster=QLabel(); poster.setAlignment(Qt.AlignCenter); poster.setMinimumHeight(220); poster.setMaximumHeight(300); poster.setPixmap(QPixmap(r['poster_path']).scaled(190,280,Qt.KeepAspectRatio,Qt.SmoothTransformation) if r and r['poster_path'] and Path(r['poster_path']).exists() else QPixmap()); overview=QLabel(r['overview'] if r else 'La sinopsis aparecerá después de consultar TMDB.'); overview.setWordWrap(True); overview.setAlignment(Qt.AlignTop|Qt.AlignLeft); overview.setMinimumWidth(430); preview=QHBoxLayout(); preview.addWidget(poster); preview.addWidget(overview,1); f.addRow(preview); s.url=QLineEdit(r['tmdb_url'] if r else ''); s.req=QLineEdit(r['requester'] if r else ''); s.req.setPlaceholderText('Escribe o selecciona un peticionario'); s.req.setCompleter(QCompleter(requesters or [],s.req)); s.st=QComboBox(); s.st.addItems(STATUS_LABELS); s.st.setCurrentText(next((x for x in STATUS_LABELS if r and x.endswith(r['status'])), '📨 Solicitado')); s.mt=QComboBox(); s.mt.addItems(['🎬 Película','📺 Serie']); s.mt.setCurrentText(('🎬 ' if not r or r['media_type']=='Película' else '📺 ')+(r['media_type'] if r else 'Película')); s.me=QComboBox(); s.me.addItems(METHODS); s.me.setCurrentText(r['download_method'] if r else 'DD'); s.link=QLineEdit(r['download_url'] if r else ''); s.notes=QTextEdit(r['notes'] if r else '')
   for n,w in [('URL TMDB:',s.url),('Peticionario:',s.req),('Estado:',s.st),('Tipo:',s.mt),('Método de descarga:',s.me),('Enlace de descarga:',s.link),('Notas:',s.notes)]: f.addRow(n,w)
   b=QDialogButtonBox(QDialogButtonBox.Save|QDialogButtonBox.Cancel); b.accepted.connect(s.accept); b.rejected.connect(s.reject); f.addRow(b)
  def data(s): x=fetch(s.url.text()); x.update(requester=s.req.text(),status=s.st.currentText().split(' ',1)[-1],media_type=s.mt.currentText().split(' ',1)[-1],download_method=s.me.currentText(),download_url=s.link.text(),notes=s.notes.toPlainText()); return x
@@ -60,12 +60,12 @@ class Window(QMainWindow):
    if r['poster_path'] and Path(r['poster_path']).exists(): i.setIcon(QIcon(r['poster_path']))
    s.list.addItem(i)
  def new(s):
-  d=Editor(s)
+  d=Editor(s,requesters=s.db.requesters())
   if d.exec()==QDialog.Accepted:
    try: s.db.save(d.data()); s.refresh()
    except Exception as e: QMessageBox.critical(s,'No se pudo guardar',str(e))
  def open_record(s,item):
-  r=item.data(Qt.UserRole); d=Editor(s,r)
+  r=item.data(Qt.UserRole); d=Editor(s,r,s.db.requesters())
   save=d.findChild(QDialogButtonBox); save.accepted.disconnect(); save.accepted.connect(d.accept)
   delete=QPushButton('Eliminar'); save.addButton(delete,QDialogButtonBox.DestructiveRole)
   delete.clicked.connect(lambda: (s.db.delete(r['id']),d.reject(),s.refresh()))
