@@ -2,8 +2,8 @@
 import os, re, sqlite3, urllib.parse, urllib.request, json
 from pathlib import Path
 from PySide6.QtWidgets import QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QLineEdit,QComboBox,QPushButton,QListWidget,QListWidgetItem,QDialog,QFormLayout,QDialogButtonBox,QMessageBox,QTextEdit,QLabel,QMenu,QInputDialog,QCompleter
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QPalette, QColor, QIcon, QPixmap
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QFont, QPalette, QColor, QIcon, QPixmap, QDesktopServices
 from PySide6.QtCore import QSettings
 APP=Path(os.environ.get('XDG_DATA_HOME',Path.home()/'.local/share'))/'joseflix-request'; APP.mkdir(parents=True,exist_ok=True); DB=APP/'joseflix.sqlite3'
 APP_VERSION='0.1.0'; STATUS_LABELS=['📨 Solicitado','🔎 Buscando','📥 Descargado','📤 Subido','✅ Notificado']; STATUSES=['Solicitado','Buscando','Descargado','Subido','Notificado']; METHODS=['DD','Torrent','ED2K']
@@ -56,7 +56,7 @@ class Window(QMainWindow):
   s.list.clear(); old=s.rq.currentText(); s.rq.blockSignals(True); s.rq.clear(); s.rq.addItem('Todos'); s.rq.addItems(s.db.requesters()); s.rq.setCurrentText(old if old in [s.rq.itemText(i) for i in range(s.rq.count())] else 'Todos'); s.rq.blockSignals(False)
   s.list.setIconSize(QPixmap(110,150).size()); st=s.st.currentText().split(' ',1)[-1]; mt=s.mt.currentText().split(' ',1)[-1]
   for r in s.db.rows(s.search.text(),st,mt,s.rq.currentText()):
-   status=next((x for x in STATUS_LABELS if x.endswith(r['status'])),r['status']); media=('🎬 ' if r['media_type']=='Película' else '📺 ')+r['media_type']; i=QListWidgetItem(f"{r['title']} ({r['year'] or '—'})  ·  {media}  ·  {r['requester']}  ·  {status}"); i.setData(Qt.UserRole,dict(r));
+   status=next((x for x in STATUS_LABELS if x.endswith(r['status'])),r['status']); media=('🎬 ' if r['media_type']=='Película' else '📺 ')+r['media_type']; link=r['download_url'] or 'Sin enlace de descarga'; i=QListWidgetItem(f"{r['title']} ({r['year'] or '—'})  ·  {media}  ·  {r['requester']}  ·  {status}\n{link}"); i.setToolTip(link); i.setData(Qt.UserRole,dict(r));
    if r['poster_path'] and Path(r['poster_path']).exists(): i.setIcon(QIcon(r['poster_path']))
    s.list.addItem(i)
  def new(s):
@@ -65,7 +65,9 @@ class Window(QMainWindow):
    try: s.db.save(d.data()); s.refresh()
    except Exception as e: QMessageBox.critical(s,'No se pudo guardar',str(e))
  def open_record(s,item):
-  r=item.data(Qt.UserRole); d=Editor(s,r,s.db.requesters())
+  r=item.data(Qt.UserRole); d=Editor(s,r,s.db.requesters()); link=d.link.text().strip()
+  if link:
+   open_link=QPushButton('Abrir enlace en el navegador'); open_link.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(link))); d.layout().addRow(open_link)
   save=d.findChild(QDialogButtonBox); save.accepted.disconnect(); save.accepted.connect(d.accept)
   delete=QPushButton('Eliminar'); save.addButton(delete,QDialogButtonBox.DestructiveRole)
   delete.clicked.connect(lambda: (s.db.delete(r['id']),d.reject(),s.refresh()))
