@@ -1,2 +1,2 @@
 #!/bin/sh
-exec python3 /usr/lib/joseflix-request/joseflix_request.py "$@"
+exec /opt/venvs/joseflix-request/bin/python /usr/share/joseflix-request/joseflix_request.py "$@"

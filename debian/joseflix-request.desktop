@@ -1,6 +1,7 @@
 [Desktop Entry]
 Name=Joseflix Request
 Comment=Gestionar peticiones de películas y series
-Exec=joseflix-launcher
+Exec=/usr/bin/joseflix-request
+Icon=joseflix-request
 Type=Application
 Categories=AudioVideo;Video;
