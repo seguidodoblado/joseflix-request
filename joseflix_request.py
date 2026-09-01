@@ -1,99 +1,114 @@
 #!/usr/bin/env python3
-import os, re, sqlite3, urllib.parse, urllib.request, json
+import json, os, re, sqlite3, urllib.parse, urllib.request
 from pathlib import Path
-from PySide6.QtWidgets import QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QLineEdit,QComboBox,QPushButton,QListWidget,QListWidgetItem,QDialog,QFormLayout,QDialogButtonBox,QMessageBox,QTextEdit,QLabel,QMenu,QInputDialog,QCompleter
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QFont, QPalette, QColor, QIcon, QPixmap, QDesktopServices
-from PySide6.QtCore import QSettings
-APP=Path(os.environ.get('XDG_DATA_HOME',Path.home()/'.local/share'))/'joseflix-request'; APP.mkdir(parents=True,exist_ok=True); DB=APP/'joseflix.sqlite3'
-APP_VERSION='0.1.0'; STATUS_LABELS=['📨 Solicitado','🔎 Buscando','📥 Descargado','📤 Subido','✅ Notificado']; STATUSES=['Solicitado','Buscando','Descargado','Subido','Notificado']; METHODS=['DD','Torrent','ED2K']
+import gi
+gi.require_version('Gtk','4.0')
+from gi.repository import Gtk, Gio, GLib, GdkPixbuf, Gdk
+
+APP_DIR=Path(os.environ.get('XDG_DATA_HOME',Path.home()/'.local/share'))/'joseflix-request'; APP_DIR.mkdir(parents=True,exist_ok=True)
+DB=APP_DIR/'joseflix.sqlite3'; STATUSES=['📨 Solicitado','🔎 Buscando','📥 Descargado','📤 Subido','✅ Notificado']; TYPES=['🎬 Película','📺 Serie']; METHODS=['DD','Torrent','ED2K']; APP_VERSION=(Path(__file__).with_name('VERSION').read_text().strip() if Path(__file__).with_name('VERSION').exists() else '1.0.0')
+CONFIG=APP_DIR/'config.json'
+def get_token():
+ try: return json.loads(CONFIG.read_text()).get('tmdb_token','')
+ except (FileNotFoundError, json.JSONDecodeError): return os.environ.get('TMDB_API_KEY','')
+def set_token(value): CONFIG.write_text(json.dumps({'tmdb_token':value}))
+def plain(x): return x.split(' ',1)[-1]
 class Store:
- def __init__(s): s.d=sqlite3.connect(DB); s.d.row_factory=sqlite3.Row; s.d.execute('CREATE TABLE IF NOT EXISTS requests (id INTEGER PRIMARY KEY,tmdb_id INTEGER,media_type TEXT,title TEXT,year TEXT,overview TEXT,poster_path TEXT,tmdb_url TEXT,requester TEXT,status TEXT,download_method TEXT,download_url TEXT,notes TEXT)'); s.d.execute('CREATE TABLE IF NOT EXISTS requesters (name TEXT PRIMARY KEY)'); s.d.execute('INSERT OR IGNORE INTO requesters SELECT DISTINCT requester FROM requests WHERE requester IS NOT NULL AND requester != ""'); s.d.commit()
- def rows(s,t='',st='Todos',mt='Todos',rq='Todos'):
-  q='SELECT * FROM requests WHERE title LIKE ?'; a=[f'%{t}%']
-  for v,c in [(st,'status'),(mt,'media_type'),(rq,'requester')]:
-   if v!='Todos': q+=f' AND {c}=?'; a.append(v)
-  return s.d.execute(q+' ORDER BY id DESC',a).fetchall()
- def save(s,x,ident=None):
-  if ident: s.d.execute('UPDATE requests SET '+','.join(f'{k}=?' for k in x)+' WHERE id=?',[*x.values(),ident])
-  else: s.d.execute('INSERT INTO requests ('+','.join(x)+') VALUES ('+','.join('?' for _ in x)+')',list(x.values()))
-  if x.get('requester'): s.d.execute('INSERT OR IGNORE INTO requesters(name) VALUES (?)',(x['requester'],))
-  s.d.commit()
- def delete(s,ident): s.d.execute('DELETE FROM requests WHERE id=?',(ident,)); s.d.commit()
- def requesters(s): return [x[0] for x in s.d.execute('SELECT name FROM requesters ORDER BY name')]
- def rename_requester(s,old,new): s.d.execute('UPDATE requesters SET name=? WHERE name=?',(new,old)); s.d.execute('UPDATE requests SET requester=? WHERE requester=?',(new,old)); s.d.commit()
- def add_requester(s,name): s.d.execute('INSERT OR IGNORE INTO requesters(name) VALUES (?)',(name,)); s.d.commit()
- def delete_requester(s,name): s.d.execute('DELETE FROM requesters WHERE name=?',(name,)); s.d.execute('UPDATE requests SET requester="" WHERE requester=?',(name,)); s.d.commit()
-def fetch(url):
- k=QSettings('Joseflix','Request').value('tmdb_token','') or os.environ.get('TMDB_API_KEY',''); p=urllib.parse.urlparse(url).path.strip('/').split('/')
- if not k: raise ValueError('Configura el token de TMDB desde Ajustes')
- if len(p)<2 or p[0] not in ('movie','tv'): raise ValueError('URL TMDB no válida')
- match=re.match(r'(\d+)',p[1])
- if not match: raise ValueError('La URL no contiene un identificador TMDB válido')
- req=urllib.request.Request(f'https://api.themoviedb.org/3/{p[0]}/{match.group(1)}?language=es-ES',headers={'Authorization':f'Bearer {k}','accept':'application/json'})
- with urllib.request.urlopen(req,timeout=15) as r: x=json.load(r)
- poster=x.get('poster_path') or ''; local=''
- if poster:
-  local=str(APP/'posters'/f"{match.group(1)}.jpg"); Path(local).parent.mkdir(exist_ok=True)
-  if not Path(local).exists():
-   with urllib.request.urlopen('https://image.tmdb.org/t/p/w342'+poster,timeout=15) as r: Path(local).write_bytes(r.read())
- return {'tmdb_id':int(match.group(1)),'media_type':'Película' if p[0]=='movie' else 'Serie','title':x.get('title') or x.get('name',''),'year':(x.get('release_date') or x.get('first_air_date',''))[:4],'overview':x.get('overview',''),'poster_path':local,'tmdb_url':url}
-class Editor(QDialog):
- def __init__(s,p,r=None,requesters=None):
-  super().__init__(p); s.record=r; s.setWindowTitle('Editar petición' if r else 'Nueva petición'); s.resize(760,760); f=QFormLayout(s); title=QLabel(f"<h2>{r['title']} ({r['year'] or '—'})</h2>" if r else '<h2>Nueva petición</h2>'); title.setTextFormat(Qt.RichText); f.addRow(title); poster=QLabel(); poster.setAlignment(Qt.AlignCenter); poster.setMinimumHeight(220); poster.setMaximumHeight(300); poster.setPixmap(QPixmap(r['poster_path']).scaled(190,280,Qt.KeepAspectRatio,Qt.SmoothTransformation) if r and r['poster_path'] and Path(r['poster_path']).exists() else QPixmap()); overview=QLabel(r['overview'] if r else 'La sinopsis aparecerá después de consultar TMDB.'); overview.setWordWrap(True); overview.setAlignment(Qt.AlignTop|Qt.AlignLeft); overview.setMinimumWidth(430); preview=QHBoxLayout(); preview.addWidget(poster); preview.addWidget(overview,1); f.addRow(preview); s.url=QLineEdit(r['tmdb_url'] if r else ''); s.req=QLineEdit(r['requester'] if r else ''); s.req.setPlaceholderText('Escribe o selecciona un peticionario'); s.req.setCompleter(QCompleter(requesters or [],s.req)); s.st=QComboBox(); s.st.addItems(STATUS_LABELS); s.st.setCurrentText(next((x for x in STATUS_LABELS if r and x.endswith(r['status'])), '📨 Solicitado')); s.mt=QComboBox(); s.mt.addItems(['🎬 Película','📺 Serie']); s.mt.setCurrentText(('🎬 ' if not r or r['media_type']=='Película' else '📺 ')+(r['media_type'] if r else 'Película')); s.me=QComboBox(); s.me.addItems(METHODS); s.me.setCurrentText(r['download_method'] if r else 'DD'); s.link=QLineEdit(r['download_url'] if r else ''); s.notes=QTextEdit(r['notes'] if r else '')
-  for n,w in [('URL TMDB:',s.url),('Peticionario:',s.req),('Estado:',s.st),('Tipo:',s.mt),('Método de descarga:',s.me),('Enlace de descarga:',s.link),('Notas:',s.notes)]: f.addRow(n,w)
-  b=QDialogButtonBox(QDialogButtonBox.Save|QDialogButtonBox.Cancel); b.accepted.connect(s.accept); b.rejected.connect(s.reject); f.addRow(b)
- def data(s): x=fetch(s.url.text()); x.update(requester=s.req.text(),status=s.st.currentText().split(' ',1)[-1],media_type=s.mt.currentText().split(' ',1)[-1],download_method=s.me.currentText(),download_url=s.link.text(),notes=s.notes.toPlainText()); return x
-class SettingsDialog(QDialog):
- def __init__(s,p):
-  super().__init__(p); s.setWindowTitle('Ajustes'); f=QFormLayout(s); s.token=QTextEdit(); s.token.setPlainText(QSettings('Joseflix','Request').value('tmdb_token','') or ''); s.token.setPlaceholderText('Token de acceso de lectura de TMDB'); s.token.setMinimumWidth(520); s.token.setMinimumHeight(90); f.addRow('Token TMDB',s.token); b=QDialogButtonBox(QDialogButtonBox.Save|QDialogButtonBox.Cancel); b.accepted.connect(s.save); b.rejected.connect(s.reject); f.addRow(b)
- def save(s): QSettings('Joseflix','Request').setValue('tmdb_token',s.token.toPlainText().strip()); s.accept()
-class Window(QMainWindow):
  def __init__(s):
-  super().__init__(); s.setWindowTitle('Joseflix — Peticiones'); s.resize(1050,700); s.db=Store(); menu=s.menuBar().addMenu('Ajustes'); menu.addAction('Configurar TMDB…',s.settings); menu.addAction('Gestionar peticionarios…',s.manage_requesters); view=s.menuBar().addMenu('Ver'); view.addAction('Modo claro',lambda:s.theme(False)); view.addAction('Modo oscuro',lambda:s.theme(True)); help_menu=s.menuBar().addMenu('Ayuda'); help_menu.addAction('Acerca de',s.about); w=QWidget(); s.setCentralWidget(w); l=QVBoxLayout(w); bar=QHBoxLayout(); l.addLayout(bar); s.search=QLineEdit(); s.search.setPlaceholderText('Buscar título'); s.st=s.combo(['Todos']+STATUS_LABELS); s.mt=s.combo(['Todos','🎬 Película','📺 Serie']); s.rq=s.combo(['Todos']); add=QPushButton('Nueva petición'); add.clicked.connect(s.new); bar.addWidget(s.search); bar.addWidget(QLabel('Estado:')); bar.addWidget(s.st); bar.addWidget(QLabel('Tipo:')); bar.addWidget(s.mt); bar.addWidget(QLabel('Peticionario:')); bar.addWidget(s.rq); bar.addWidget(add); s.search.textChanged.connect(s.refresh); [x.currentTextChanged.connect(s.refresh) for x in [s.st,s.mt,s.rq]]; s.list=QListWidget(); s.list.itemDoubleClicked.connect(s.open_record); l.addWidget(s.list); s.refresh(); s.theme(QSettings('Joseflix','Request').value('dark_mode',False,type=bool))
- def combo(s,x): c=QComboBox(); c.addItems(x); return c
+  s.db=sqlite3.connect(DB); s.db.row_factory=sqlite3.Row; s.db.execute('CREATE TABLE IF NOT EXISTS requests (id INTEGER PRIMARY KEY,tmdb_id INTEGER,media_type TEXT,title TEXT,year TEXT,overview TEXT,poster_path TEXT,tmdb_url TEXT,requester TEXT,status TEXT,download_method TEXT,download_url TEXT,notes TEXT)'); s.db.execute('CREATE TABLE IF NOT EXISTS requesters (name TEXT PRIMARY KEY)'); s.db.execute('INSERT OR IGNORE INTO requesters SELECT DISTINCT requester FROM requests WHERE requester!=""'); s.db.commit()
+ def rows(s,text='',status='Todos',typ='Todos',requester='Todos'):
+  q='SELECT * FROM requests WHERE title LIKE ?'; a=[f'%{text}%']
+  for v,c in [(plain(status),'status'),(plain(typ),'media_type'),(requester,'requester')]:
+   if v!='Todos': q+=f' AND {c}=?'; a.append(v)
+  return s.db.execute(q+' ORDER BY id DESC',a).fetchall()
+ def requesters(s): return [x[0] for x in s.db.execute('SELECT name FROM requesters ORDER BY name')]
+ def save(s,d,ident=None):
+  if ident: s.db.execute('UPDATE requests SET '+','.join(f'{k}=?' for k in d)+' WHERE id=?',[*d.values(),ident])
+  else: s.db.execute('INSERT INTO requests ('+','.join(d)+') VALUES ('+','.join('?' for _ in d)+')',list(d.values()))
+  s.db.commit()
+ def delete(s,i): s.db.execute('DELETE FROM requests WHERE id=?',(i,)); s.db.commit()
+ def add_requester(s,n): s.db.execute('INSERT OR IGNORE INTO requesters(name) VALUES (?)',(n,)); s.db.commit()
+ def rename_requester(s,o,n): s.db.execute('UPDATE requesters SET name=? WHERE name=?',(n,o)); s.db.execute('UPDATE requests SET requester=? WHERE requester=?',(n,o)); s.db.commit()
+ def delete_requester(s,n): s.db.execute('DELETE FROM requesters WHERE name=?',(n,)); s.db.execute('UPDATE requests SET requester="" WHERE requester=?',(n,)); s.db.commit()
+def tmdb(url):
+ token=get_token(); p=urllib.parse.urlparse(url).path.strip('/').split('/'); m=re.match(r'(\d+)',p[1]) if len(p)>1 else None
+ if not token: raise ValueError('Configura el token de TMDB desde Ajustes')
+ if len(p)<2 or p[0] not in ('movie','tv') or not m: raise ValueError('URL TMDB no válida')
+ req=urllib.request.Request(f'https://api.themoviedb.org/3/{p[0]}/{m.group(1)}?language=es-ES',headers={'Authorization':'Bearer '+token})
+ with urllib.request.urlopen(req,timeout=15) as h: d=json.load(h)
+ poster=d.get('poster_path') or ''; local=''
+ if poster:
+  local=str(APP_DIR/'posters'/f'{m.group(1)}.jpg'); Path(local).parent.mkdir(exist_ok=True)
+  if not Path(local).exists():
+   with urllib.request.urlopen('https://image.tmdb.org/t/p/w342'+poster,timeout=15) as h: Path(local).write_bytes(h.read())
+ return {'tmdb_id':int(m.group(1)),'media_type':'Película' if p[0]=='movie' else 'Serie','title':d.get('title') or d.get('name',''),'year':(d.get('release_date') or d.get('first_air_date',''))[:4],'overview':d.get('overview',''),'poster_path':local,'tmdb_url':url}
+class Editor(Gtk.Dialog):
+ def __init__(s,parent,store,row=None):
+  super().__init__(title='Editar petición' if row else 'Nueva petición',transient_for=parent,modal=True,default_width=900,default_height=850); s.store=store; s.row=row; outer=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); box.set_margin_start(16); box.set_margin_end(16); box.set_margin_top(16); box.set_margin_bottom(16); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(box); outer.append(scroll); s.set_child(outer)
+  s.heading=Gtk.Label(); s.heading.set_markup(f'<big><b>{row["title"]} ({row["year"] or "—"})</b></big>' if row else '<big><b>Nueva petición</b></big>'); box.append(s.heading); s.preview=Gtk.Box(spacing=16); box.append(s.preview); s.poster=Gtk.Image(); s.poster.set_pixel_size(260); s.preview.append(s.poster); s.overview=Gtk.Label(label=row['overview'] if row else 'La sinopsis aparecerá al consultar TMDB.'); s.overview.set_wrap(True); s.overview.set_max_width_chars(65); s.overview.set_valign(Gtk.Align.START); s.preview.append(s.overview)
+  grid=Gtk.Grid(column_spacing=10,row_spacing=8); box.append(grid); s.fields={}; vals=[('URL TMDB:',row['tmdb_url'] if row else ''),('Peticionario:',row['requester'] if row else ''),('Enlace de descarga:',row['download_url'] if row else ''),('Notas:',row['notes'] if row else '')]
+  for i,(n,v) in enumerate([vals[0],vals[2]]): grid.attach(Gtk.Label(label=n,xalign=0),0,[0,2][i],1,1); e=Gtk.Entry(); e.set_text(v); e.set_hexpand(True); grid.attach(e,1,[0,2][i],1,1); s.fields[n]=e
+  grid.attach(Gtk.Label(label='Notas:',xalign=0,valign=Gtk.Align.START),0,3,1,1); notes=Gtk.TextView(); notes.set_wrap_mode(Gtk.WrapMode.WORD_CHAR); notes.set_vexpand(True); notes.set_size_request(500,110); notes.get_buffer().set_text(vals[3][1]); notes_scroll=Gtk.ScrolledWindow(); notes_scroll.set_min_content_height(110); notes_scroll.set_hexpand(True); notes_scroll.set_child(notes); grid.attach(notes_scroll,1,3,1,1); s.fields['Notas:']=notes
+  s.requester=Gtk.DropDown.new_from_strings(store.requesters() or ['Sin peticionario']); s.requester.set_selected(next((i for i,x in enumerate(store.requesters()) if row and x==row['requester']),0)); grid.attach(Gtk.Label(label='Peticionario:',xalign=0),0,1,1,1); grid.attach(s.requester,1,1,1,1)
+  s.status=Gtk.DropDown.new_from_strings(STATUSES); s.status.set_selected(next((i for i,x in enumerate(STATUSES) if row and plain(x)==row['status']),0)); grid.attach(Gtk.Label(label='Estado:',xalign=0),0,4,1,1); grid.attach(s.status,1,4,1,1)
+  s.typ=Gtk.DropDown.new_from_strings(TYPES); s.typ.set_selected(0 if not row or row['media_type']=='Película' else 1); grid.attach(Gtk.Label(label='Tipo:',xalign=0),0,5,1,1); grid.attach(s.typ,1,5,1,1)
+  s.method=Gtk.DropDown.new_from_strings(METHODS); s.method.set_selected(METHODS.index(row['download_method']) if row and row['download_method'] in METHODS else 0); grid.attach(Gtk.Label(label='Método de descarga:',xalign=0),0,6,1,1); grid.attach(s.method,1,6,1,1)
+  cancel=Gtk.Button(label='Cancelar'); save=Gtk.Button(label='Guardar'); actions=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8); actions.set_halign(Gtk.Align.END); actions.set_margin_start(16); actions.set_margin_end(16); actions.set_margin_bottom(16); actions.append(cancel)
+  if row and row['download_url']:
+   open_link=Gtk.Button(label='Abrir enlace'); open_link.connect('clicked',lambda *_: Gio.AppInfo.launch_default_for_uri(row['download_url'],None)); actions.append(open_link)
+  if row:
+   remove=Gtk.Button(label='Eliminar'); actions.append(remove)
+   def confirm_delete(*_):
+    confirm=Gtk.MessageDialog(transient_for=s,text=f'¿Eliminar la petición «{row["title"]}»?',buttons=Gtk.ButtonsType.YES_NO); confirm.connect('response',lambda dialog,response:(s.store.delete(row['id']),s.close()) if response==Gtk.ResponseType.YES else dialog.close()); confirm.present()
+   remove.connect('clicked',confirm_delete)
+  actions.append(save); outer.append(actions); cancel.connect('clicked',lambda *_:s.close()); save.connect('clicked',lambda *_:s.response(None,Gtk.ResponseType.OK)); s.present()
+  if row and row['poster_path'] and Path(row['poster_path']).exists(): s.poster.set_from_file(row['poster_path'])
+ def response(s,_,response):
+  if response==Gtk.ResponseType.OK:
+   try: s.data=tmdb(s.fields['URL TMDB:'].get_text()); s.data.update(requester='' if not s.store.requesters() else s.requester.get_selected_item().get_string(),download_url=s.fields['Enlace de descarga:'].get_text(),notes=s.fields['Notas:'].get_buffer().get_text(s.fields['Notas:'].get_buffer().get_start_iter(),s.fields['Notas:'].get_buffer().get_end_iter(),False),status=plain(s.status.get_selected_item().get_string()),media_type=plain(s.typ.get_selected_item().get_string()),download_method=s.method.get_selected_item().get_string()); s.store.save(s.data,s.row['id'] if s.row else None)
+   except Exception as e: s.error=Gtk.MessageDialog(transient_for=s,text=str(e),buttons=Gtk.ButtonsType.OK); s.error.show(); return
+  s.close()
+class App(Gtk.Application):
+ def __init__(s): super().__init__(application_id='es.joseflix.Request'); s.store=Store()
+ def do_activate(s):
+  s.win=Gtk.ApplicationWindow(application=s,title='Joseflix — Peticiones',default_width=1100,default_height=700); root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); root.set_margin_start(12); root.set_margin_end(12); root.set_margin_top(8); root.set_margin_bottom(8); s.win.set_child(root); menu=Gio.Menu(); menu.append('Configurar TMDB…','app.settings'); menu.append('Gestionar peticionarios…','app.requesters'); view=Gio.Menu(); view.append('Modo claro','app.light'); view.append('Modo oscuro','app.dark'); helpm=Gio.Menu(); helpm.append('Acerca de','app.about'); menubar=Gtk.Box(spacing=8); ajustes=Gtk.MenuButton(label='⚙ Ajustes'); ver=Gtk.MenuButton(label='◐ Tema'); ayuda=Gtk.MenuButton(label='? Ayuda'); ajustes.set_menu_model(menu); ver.set_menu_model(view); ayuda.set_menu_model(helpm); menubar.append(ajustes); menubar.append(ver); menubar.append(ayuda); root.append(menubar)
+  bar=Gtk.Box(spacing=8); root.append(bar); s.search=Gtk.SearchEntry(placeholder_text='Buscar título'); s.status=Gtk.DropDown.new_from_strings(['Todos']+STATUSES); s.typ=Gtk.DropDown.new_from_strings(['Todos']+TYPES); s.req=Gtk.DropDown.new_from_strings(['Todos']+s.store.requesters()); add=Gtk.Button(label='Nueva petición'); add.connect('clicked',lambda *_:s.new()); bar.append(s.search); bar.append(Gtk.Label(label='Estado:')); bar.append(s.status); bar.append(Gtk.Label(label='Tipo:')); bar.append(s.typ); bar.append(Gtk.Label(label='Peticionario:')); bar.append(s.req); bar.append(add); s.search.connect('search-changed',lambda *_:s.refresh()); [x.connect('notify::selected-item',lambda *_:s.refresh()) for x in [s.status,s.typ,s.req]]; s.list=Gtk.ListBox(); s.list.set_activate_on_single_click(False); s.list.connect('row-activated',lambda _,row:s.open(row.data)); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(s.list); root.append(scroll); s.refresh(); s.add_actions()
+  s.win.set_default_size(1100,700); s.win.set_decorated(True); s.win.set_resizable(True); s.win.present()
+ def add_actions(s):
+  for name,fn in [('settings',s.settings),('requesters',s.requesters),('about',s.about),('light',lambda:s.theme(False)),('dark',lambda:s.theme(True))]: a=Gio.SimpleAction.new(name,None); a.connect('activate',lambda _,__,f=fn:f()); s.add_action(a)
  def refresh(s):
-  s.list.clear(); old=s.rq.currentText(); s.rq.blockSignals(True); s.rq.clear(); s.rq.addItem('Todos'); s.rq.addItems(s.db.requesters()); s.rq.setCurrentText(old if old in [s.rq.itemText(i) for i in range(s.rq.count())] else 'Todos'); s.rq.blockSignals(False)
-  s.list.setIconSize(QPixmap(110,150).size()); st=s.st.currentText().split(' ',1)[-1]; mt=s.mt.currentText().split(' ',1)[-1]
-  for r in s.db.rows(s.search.text(),st,mt,s.rq.currentText()):
-   status=next((x for x in STATUS_LABELS if x.endswith(r['status'])),r['status']); media=('🎬 ' if r['media_type']=='Película' else '📺 ')+r['media_type']; link=r['download_url'] or 'Sin enlace de descarga'; i=QListWidgetItem(f"{r['title']} ({r['year'] or '—'})  ·  {media}  ·  {r['requester']}  ·  {status}\n{link}"); i.setToolTip(link); i.setData(Qt.UserRole,dict(r));
-   if r['poster_path'] and Path(r['poster_path']).exists(): i.setIcon(QIcon(r['poster_path']))
-   s.list.addItem(i)
+  while (r:=s.list.get_row_at_index(0)): s.list.remove(r)
+  for r in s.store.rows(s.search.get_text(),s.status.get_selected_item().get_string(),s.typ.get_selected_item().get_string(),s.req.get_selected_item().get_string()):
+   row=Gtk.ListBoxRow(); row.data=r; box=Gtk.Box(spacing=12); image=Gtk.Image(); image.set_pixel_size(120); image.set_from_file(r['poster_path']) if r['poster_path'] and Path(r['poster_path']).exists() else None; box.append(image); box.append(Gtk.Label(label=f"{r['title']} ({r['year'] or '—'})  ·  {r['media_type']}  ·  {r['requester']}  ·  {r['status']}\n{r['download_url'] or 'Sin enlace de descarga'}",xalign=0)); row.set_child(box); s.list.append(row)
  def new(s):
-  d=Editor(s,requesters=s.db.requesters())
-  if d.exec()==QDialog.Accepted:
-   try: s.db.save(d.data()); s.refresh()
-   except Exception as e: QMessageBox.critical(s,'No se pudo guardar',str(e))
- def open_record(s,item):
-  r=item.data(Qt.UserRole); d=Editor(s,r,s.db.requesters()); link=d.link.text().strip()
-  if link:
-   open_link=QPushButton('Abrir enlace en el navegador'); open_link.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(link))); d.layout().addRow(open_link)
-  save=d.findChild(QDialogButtonBox); save.accepted.disconnect(); save.accepted.connect(d.accept)
-  delete=QPushButton('Eliminar'); save.addButton(delete,QDialogButtonBox.DestructiveRole)
-  delete.clicked.connect(lambda: (s.db.delete(r['id']),d.reject(),s.refresh()))
-  if d.exec()==QDialog.Accepted:
-   try: s.db.save(d.data(),r['id']); s.refresh()
-   except Exception as e: QMessageBox.critical(s,'No se pudo guardar',str(e))
- def manage_requesters(s):
-  d=QDialog(s); d.setWindowTitle('Gestionar peticionarios'); d.resize(360,300); l=QVBoxLayout(d); lst=QListWidget(); l.addWidget(lst); buttons=QHBoxLayout(); l.addLayout(buttons)
-  def load(): lst.clear(); lst.addItems(s.db.requesters())
-  def add():
-   n,ok=QInputDialog.getText(d,'Nuevo peticionario','Nombre:')
-   if ok and n.strip(): s.db.add_requester(n.strip()); load(); s.refresh()
-  def edit():
-   if not lst.currentItem(): return
-   old=lst.currentItem().text(); n,ok=QInputDialog.getText(d,'Editar peticionario','Nombre:',text=old)
-   if ok and n.strip(): s.db.rename_requester(old,n.strip()); load(); s.refresh()
-  def remove():
-   if lst.currentItem() and QMessageBox.question(d,'Borrar peticionario','También se quitará de sus peticiones.')==QMessageBox.Yes: s.db.delete_requester(lst.currentItem().text()); load(); s.refresh()
-  for label,fn in [('Crear',add),('Editar',edit),('Borrar',remove)]: b=QPushButton(label); b.clicked.connect(fn); buttons.addWidget(b)
-  load(); d.exec()
- def settings(s): SettingsDialog(s).exec()
- def theme(s,dark):
-  p=QPalette()
-  if dark:
-   p.setColor(QPalette.Window,QColor('#202124')); p.setColor(QPalette.WindowText,Qt.white); p.setColor(QPalette.Base,QColor('#303134')); p.setColor(QPalette.Text,Qt.white); p.setColor(QPalette.Button,QColor('#3c4043')); p.setColor(QPalette.ButtonText,Qt.white)
-  QApplication.instance().setPalette(p); font=QFont('Ubuntu Sans',13); font.setFamilies(['Ubuntu Sans','Noto Color Emoji','Noto Emoji','DejaVu Sans']); QApplication.instance().setFont(font); s.list.setStyleSheet('QListWidget { font-family: "Ubuntu Sans", "Noto Color Emoji", "Noto Emoji"; font-size: 13pt; }'); s.st.setStyleSheet('QComboBox { font-family: "Ubuntu Sans", "Noto Color Emoji", "Noto Emoji"; font-size: 13pt; }'); s.mt.setStyleSheet('QComboBox { font-family: "Ubuntu Sans", "Noto Color Emoji", "Noto Emoji"; font-size: 13pt; }'); QSettings('Joseflix','Request').setValue('dark_mode',dark)
+  d=Editor(s.win,s.store); d.connect('response',lambda *_:s.refresh()); d.present()
+ def open(s,r):
+  d=Editor(s.win,s.store,r); d.connect('response',lambda *_:s.refresh()); d.connect('close-request',lambda *_:s.refresh()); d.present()
+ def settings(s):
+  d=Gtk.Dialog(title='Ajustes de TMDB',transient_for=s.win,modal=True); box=d.get_content_area(); box.append(Gtk.Label(label='Token de acceso de lectura de TMDB')); e=Gtk.Entry(); e.set_text(get_token()); e.set_hexpand(True); box.append(e); d.add_button('Cancelar',Gtk.ResponseType.CANCEL); d.add_button('Guardar',Gtk.ResponseType.OK); d.connect('response',lambda x,r:(set_token(e.get_text().strip()),x.close()) if r==Gtk.ResponseType.OK else x.close()); d.present()
+ def requesters(s):
+  d=Gtk.Dialog(title='Gestionar peticionarios',transient_for=s.win,modal=True); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); box.set_margin_start(16); box.set_margin_end(16); box.set_margin_top(16); box.set_margin_bottom(16); d.set_child(box); lst=Gtk.ListBox(); lst.set_vexpand(True); box.append(lst); entry=Gtk.Entry(); entry.set_placeholder_text('Nuevo nombre'); box.append(entry); buttons=Gtk.Box(spacing=6); box.append(buttons)
+  def load():
+   while (r:=lst.get_row_at_index(0)): lst.remove(r)
+   for n in s.store.requesters(): lst.append(Gtk.Label(label=n,xalign=0))
+  add=Gtk.Button(label='Crear'); edit=Gtk.Button(label='Editar'); remove=Gtk.Button(label='Borrar'); buttons.append(add); buttons.append(edit); buttons.append(remove)
+  def valid():
+   name=entry.get_text().strip()
+   if not name:
+    warning=Gtk.MessageDialog(transient_for=d,text='El nombre del peticionario no puede estar vacío',buttons=Gtk.ButtonsType.OK); warning.connect('response',lambda dialog,_:dialog.close()); warning.present(); return None
+   return name
+  def create(*_):
+   if (name:=valid()): s.store.add_requester(name); entry.set_text(''); load(); s.refresh()
+  def rename(*_):
+   selected=lst.get_selected_row()
+   if selected and (name:=valid()): s.store.rename_requester(selected.get_child().get_text(),name); load(); lst.select_row(None); entry.set_text(''); s.refresh()
+  def delete_requester(*_):
+   selected=lst.get_selected_row()
+   if not selected: return
+   name=selected.get_child().get_text(); confirm=Gtk.MessageDialog(transient_for=d,text=f'¿Eliminar el peticionario «{name}»?',buttons=Gtk.ButtonsType.YES_NO); confirm.connect('response',lambda dialog,response:(s.store.delete_requester(name),load(),s.refresh(),dialog.close()) if response==Gtk.ResponseType.YES else dialog.close()); confirm.present()
+  lst.connect('row-selected',lambda _,row: entry.set_text(row.get_child().get_text()) if row else entry.set_text('')); add.connect('clicked',create); edit.connect('clicked',rename); remove.connect('clicked',delete_requester); load(); d.present(); GLib.idle_add(lambda: (lst.select_row(None),entry.set_text(''),False)[-1])
  def about(s):
-  d=QDialog(s); d.setWindowTitle('Acerca de Joseflix Request'); l=QVBoxLayout(d); icon=QLabel(); icon.setAlignment(Qt.AlignCenter); icon.setPixmap(QPixmap('/usr/share/icons/hicolor/scalable/apps/joseflix-request.svg').scaled(96,96,Qt.KeepAspectRatio,Qt.SmoothTransformation)); l.addWidget(icon); text=QLabel(f'<h2>Joseflix Request</h2><p>Versión {APP_VERSION}</p><p>Gestor de peticiones de películas y series.</p><p><b>Desarrollador:</b><br>seguidodoblado<br>jose.antonio.seguido@gmail.com</p><p><b>Dependencia:</b><br>PySide6</p>'); text.setAlignment(Qt.AlignCenter); l.addWidget(text); b=QDialogButtonBox(QDialogButtonBox.Close); b.rejected.connect(d.reject); b.accepted.connect(d.accept); l.addWidget(b); d.exec()
-app=QApplication([]); w=Window(); w.show(); app.exec()
+  d=Gtk.Dialog(title='Acerca de Joseflix Request',transient_for=s.win,modal=True); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); box.set_margin_start(28); box.set_margin_end(28); box.set_margin_top(24); box.set_margin_bottom(24); d.set_child(box); icon=Gtk.Image(); icon_path='/usr/share/icons/hicolor/scalable/apps/joseflix-request.svg'; icon.set_from_file(icon_path if Path(icon_path).exists() else str(Path(__file__).with_name('joseflix-request.svg'))); icon.set_pixel_size(96); box.append(icon); info=Gtk.Label(); info.set_markup(f'<big><b>Joseflix Request</b></big>\n\nVersión {APP_VERSION}\nGestor de peticiones para Joseflix\n\nDesarrollador:\nseguidodoblado\njose.antonio.seguido@gmail.com\n\nDependencia:\nPyGObject + GTK 4'); info.set_justify(Gtk.Justification.CENTER); box.append(info); close=Gtk.Button(label='Cerrar'); close.set_halign(Gtk.Align.CENTER); close.connect('clicked',lambda *_:d.close()); box.append(close); d.present()
+ def theme(s,dark):
+  settings=Gtk.Settings.get_default(); settings.set_property('gtk-theme-name','Adwaita-dark' if dark else 'Adwaita'); settings.set_property('gtk-application-prefer-dark-theme',dark)
+App().run()

@@ -3,5 +3,6 @@ Name=Joseflix Request
 Comment=Gestionar peticiones de películas y series
 Exec=/usr/bin/joseflix-request
 Icon=joseflix-request
+StartupWMClass=joseflix-request
 Type=Application
 Categories=AudioVideo;Video;

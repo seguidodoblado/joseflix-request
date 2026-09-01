@@ -16,9 +16,8 @@ Aplicación de escritorio para gestionar las peticiones de películas y series d
 ## Desarrollo
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install PySide6
-.venv/bin/python joseflix_request.py
+sudo apt install python3 python3-gi gir1.2-gtk-4.0
+python3 joseflix_request.py
 ```
 
 Los datos se guardan en `~/.local/share/joseflix-request/`.
@@ -27,12 +26,12 @@ Configura el token de TMDB desde **Ajustes → Configurar TMDB…**. Debe utiliz
 
 ## Paquete Debian
 
-El paquete incluye el entorno virtual de PySide6 y utiliza estas rutas:
+El paquete utiliza GTK 4 y PyGObject del sistema, y utiliza estas rutas:
 
 ```text
 /usr/bin/joseflix-request
 /usr/share/joseflix-request/
-/opt/venvs/joseflix-request/
+/opt/joseflix-request/
 ```
 
 Para construirlo:

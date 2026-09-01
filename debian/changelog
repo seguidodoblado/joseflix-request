@@ -1,5 +1,11 @@
+joseflix-request (1.0.0-1) stable; urgency=high
+
+  * GTK 4 and PyGObject migration
+
+ -- seguidodoblado <jose.antonio.seguido@gmail.com> Tue, 01 Sep 2026 12:00:00 +0200
+
 joseflix-request (0.1.0-1) unstable; urgency=low
 
   * Initial release.
 
- -- Joseflix <joseflix@localhost>  Mon, 31 Aug 2026 12:00:00 +0200
+ -- seguidodoblado <jose.antonio.seguido@gmail.com>  Mon, 31 Aug 2026 12:00:00 +0200
