@@ -6,7 +6,7 @@ gi.require_version('Gtk','4.0')
 from gi.repository import Gtk, Gio, GLib, GdkPixbuf, Gdk
 
 APP_DIR=Path(os.environ.get('XDG_DATA_HOME',Path.home()/'.local/share'))/'joseflix-request'; APP_DIR.mkdir(parents=True,exist_ok=True)
-DB=APP_DIR/'joseflix.sqlite3'; STATUSES=['📨 Solicitado','🔎 Buscando','📥 Descargado','📤 Subido','✅ Notificado']; TYPES=['🎬 Película','📺 Serie']; METHODS=['⬇️ JDownloader','🧲 Transmission','🐴 aMule']; APP_VERSION=(Path(__file__).with_name('VERSION').read_text().strip() if Path(__file__).with_name('VERSION').exists() else '1.0.0')
+DB=APP_DIR/'joseflix.sqlite3'; STATUSES=['📨 Solicitado','🔎 Buscando','📥 Descargado','📤 Subido','✅ Notificado','🔧 Corregir']; TYPES=['🎬 Película','📺 Serie']; METHODS=['❓ Sin método','⬇️ JDownloader','🧲 Transmission','🐴 aMule']; APP_VERSION=(Path(__file__).with_name('VERSION').read_text().strip() if Path(__file__).with_name('VERSION').exists() else '1.0.0')
 CONFIG=APP_DIR/'config.json'
 def get_token():
  try: return json.loads(CONFIG.read_text()).get('tmdb_token','')
@@ -92,7 +92,7 @@ class App(Gtk.Application):
  def settings(s):
   d=Gtk.Dialog(title='Ajustes de TMDB',transient_for=s.win,modal=True); box=d.get_content_area(); box.append(Gtk.Label(label='Token de acceso de lectura de TMDB')); e=Gtk.Entry(); e.set_text(get_token()); e.set_hexpand(True); box.append(e); d.add_button('Cancelar',Gtk.ResponseType.CANCEL); d.add_button('Guardar',Gtk.ResponseType.OK); d.connect('response',lambda x,r:(set_token(e.get_text().strip()),x.close()) if r==Gtk.ResponseType.OK else x.close()); d.present()
  def requesters(s):
-  d=Gtk.Dialog(title='Gestionar peticionarios',transient_for=s.win,modal=True); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); box.set_margin_start(16); box.set_margin_end(16); box.set_margin_top(16); box.set_margin_bottom(16); d.set_child(box); lst=Gtk.ListBox(); lst.set_vexpand(True); box.append(lst); entry=Gtk.Entry(); entry.set_placeholder_text('Nuevo nombre'); box.append(entry); buttons=Gtk.Box(spacing=6); box.append(buttons)
+  d=Gtk.Dialog(title='Gestionar peticionarios',transient_for=s.win,modal=True,default_width=360,default_height=650); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); box.set_margin_start(16); box.set_margin_end(16); box.set_margin_top(16); box.set_margin_bottom(16); d.set_child(box); lst=Gtk.ListBox(); lst.set_vexpand(True); list_scroll=Gtk.ScrolledWindow(); list_scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC); list_scroll.set_min_content_height(300); list_scroll.set_max_content_height(500); list_scroll.set_propagate_natural_height(False); list_scroll.set_child(lst); box.append(list_scroll); entry=Gtk.Entry(); entry.set_placeholder_text('Nuevo nombre'); box.append(entry); buttons=Gtk.Box(spacing=6); box.append(buttons)
   def load():
    while (r:=lst.get_row_at_index(0)): lst.remove(r)
    for n in s.store.requesters(): lst.append(Gtk.Label(label=n,xalign=0))
