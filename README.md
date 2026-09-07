@@ -43,5 +43,5 @@ Para construirlo:
 El resultado se genera en la carpeta superior del proyecto. Para instalarlo:
 
 ```bash
-sudo apt install ../joseflix-request_0.1.0-1_all.deb
+sudo apt install ../joseflix-request_x.x.x-x_all.deb
 ```
