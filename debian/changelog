@@ -1,3 +1,9 @@
+joseflix-request (1.0.0-2ubuntu1) UNRELEASED; urgency=medium
+
+  * Minor correction to the space occupied by the movie synopsis
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Sat, 12 Sep 2026 00:47:49 +0200
+
 joseflix-request (1.0.0-2) stable; urgency=low
 
   * Scroll is implemented in the requester management modal window
