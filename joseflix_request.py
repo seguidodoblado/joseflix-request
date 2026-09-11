@@ -11,7 +11,12 @@ CONFIG=APP_DIR/'config.json'
 def get_token():
  try: return json.loads(CONFIG.read_text()).get('tmdb_token','')
  except (FileNotFoundError, json.JSONDecodeError): return os.environ.get('TMDB_API_KEY','')
-def set_token(value): CONFIG.write_text(json.dumps({'tmdb_token':value}))
+def set_token(value):
+    cfg = {}
+    try: cfg = json.loads(CONFIG.read_text())
+    except (FileNotFoundError, json.JSONDecodeError): pass
+    cfg['tmdb_token'] = value
+    CONFIG.write_text(json.dumps(cfg))
 def plain(x): return x.split(' ',1)[-1]
 class Store:
  def __init__(s):
@@ -78,7 +83,12 @@ class App(Gtk.Application):
  def do_activate(s):
   s.win=Gtk.ApplicationWindow(application=s,title='Joseflix — Peticiones',default_width=1100,default_height=700); root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); root.set_margin_start(12); root.set_margin_end(12); root.set_margin_top(8); root.set_margin_bottom(8); s.win.set_child(root); menubar=Gtk.Box(spacing=8); ajustes=Gtk.MenuButton(); ver=Gtk.MenuButton(); ayuda=Gtk.MenuButton(); [(b.set_child(c),menubar.append(b)) for b,c in [(ajustes,Gtk.Box(spacing=6)),(ver,Gtk.Box(spacing=6)),(ayuda,Gtk.Box(spacing=6))]]; ajustes.get_child().append(Gtk.Image.new_from_icon_name('preferences-system')); ajustes.get_child().append(Gtk.Label(label='Ajustes')); ver.get_child().append(Gtk.Image.new_from_icon_name('preferences-desktop-theme')); ver.get_child().append(Gtk.Label(label='Tema')); ayuda.get_child().append(Gtk.Image.new_from_icon_name('help-browser')); ayuda.get_child().append(Gtk.Label(label='Ayuda')); s.menu_popover(ajustes,[('Configurar TMDB…','system-lock-screen',s.settings),('Gestionar peticionarios…','system-users',s.requesters)]); s.menu_popover(ver,[('Modo claro','weather-clear',lambda:s.theme(False)),('Modo oscuro','weather-clear-night',lambda:s.theme(True))]); s.menu_popover(ayuda,[('Acerca de','help-about',s.about)]); root.append(menubar)
   bar=Gtk.Box(spacing=8); root.append(bar); s.search=Gtk.SearchEntry(placeholder_text='Buscar título'); s.status=Gtk.DropDown.new_from_strings(['Todos']+STATUSES); s.typ=Gtk.DropDown.new_from_strings(['Todos']+TYPES); s.req=Gtk.DropDown.new_from_strings(['Todos']+s.store.requesters()); add=Gtk.Button(label='Nueva petición'); add.connect('clicked',lambda *_:s.new()); bar.append(s.search); bar.append(Gtk.Label(label='Estado:')); bar.append(s.status); bar.append(Gtk.Label(label='Tipo:')); bar.append(s.typ); bar.append(Gtk.Label(label='Peticionario:')); bar.append(s.req); bar.append(add); s.search.connect('search-changed',lambda *_:s.refresh()); [x.connect('notify::selected-item',lambda *_:s.refresh()) for x in [s.status,s.typ,s.req]]; s.list=Gtk.ListBox(); s.list.set_activate_on_single_click(False); s.list.connect('row-activated',lambda _,row:s.open(row.data)); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(s.list); root.append(scroll); s.refresh(); s.add_actions()
-  s.win.set_default_size(1100,700); s.win.set_decorated(True); s.win.set_resizable(True); s.win.present()
+  s.win.set_default_size(1100,700); s.win.set_decorated(True); s.win.set_resizable(True)
+  try:
+   cfg=json.loads(CONFIG.read_text())
+   if 'dark_theme' in cfg: s.theme(cfg['dark_theme'])
+  except (FileNotFoundError, json.JSONDecodeError): pass
+  s.win.present()
  def add_actions(s):
   for name,fn in [('settings',s.settings),('requesters',s.requesters),('about',s.about),('light',lambda:s.theme(False)),('dark',lambda:s.theme(True))]: a=Gio.SimpleAction.new(name,None); a.connect('activate',lambda _,__,f=fn:f()); s.add_action(a)
  def refresh(s):
@@ -115,5 +125,10 @@ class App(Gtk.Application):
  def about(s):
   d=Gtk.Dialog(title='Acerca de Joseflix Request',transient_for=s.win,modal=True); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); box.set_margin_start(28); box.set_margin_end(28); box.set_margin_top(24); box.set_margin_bottom(24); d.set_child(box); icon=Gtk.Image(); icon_path='/usr/share/icons/hicolor/scalable/apps/joseflix-request.svg'; icon.set_from_file(icon_path if Path(icon_path).exists() else str(Path(__file__).with_name('joseflix-request.svg'))); icon.set_pixel_size(96); box.append(icon); info=Gtk.Label(); info.set_markup(f'<big><b>Joseflix Request</b></big>\n\nVersión {APP_VERSION}\nGestor de peticiones para Joseflix\n\nDesarrollador:\nseguidodoblado\njose.antonio.seguido@gmail.com\n\nDependencia:\nPyGObject + GTK 4'); info.set_justify(Gtk.Justification.CENTER); box.append(info); close=Gtk.Button(label='Cerrar'); close.set_halign(Gtk.Align.CENTER); close.connect('clicked',lambda *_:d.close()); box.append(close); d.present()
  def theme(s,dark):
-  settings=Gtk.Settings.get_default(); settings.set_property('gtk-theme-name','Adwaita-dark' if dark else 'Adwaita'); settings.set_property('gtk-application-prefer-dark-theme',dark)
+    settings=Gtk.Settings.get_default(); settings.set_property('gtk-theme-name','Adwaita-dark' if dark else 'Adwaita'); settings.set_property('gtk-application-prefer-dark-theme',dark)
+    cfg = {}
+    try: cfg = json.loads(CONFIG.read_text())
+    except (FileNotFoundError, json.JSONDecodeError): pass
+    cfg['dark_theme'] = dark
+    CONFIG.write_text(json.dumps(cfg))
 App().run()
