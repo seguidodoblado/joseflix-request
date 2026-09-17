@@ -1,3 +1,9 @@
+joseflix-request (1.0.0-2ubuntu7) noble; urgency=medium
+
+  * Main view sorted by request date
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Thu, 17 Sep 2026 18:22:05 +0200
+
 joseflix-request (1.0.0-2ubuntu6) noble; urgency=medium
 
   * Correct double click error without request date  Calendar widget to

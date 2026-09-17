@@ -38,7 +38,7 @@ class Store:
   for v,c in [(plain(status),'status'),(plain(typ),'media_type'),(requester,'requester'),(plain(priority),'priority')]:
    if v!='Todos': q+=f' AND {c}=?'; a.append(v)
   if date: q+=' AND request_date LIKE ?'; a.append(f'%{date}%')
-  return s.db.execute(q+' ORDER BY id DESC',a).fetchall()
+  return s.db.execute(q+' ORDER BY request_date DESC, id DESC',a).fetchall()
  def requesters(s): return [x[0] for x in s.db.execute('SELECT name FROM requesters ORDER BY name')]
  def save(s,d,ident=None):
   if ident: s.db.execute('UPDATE requests SET '+','.join(f'{k}=?' for k in d)+' WHERE id=?',[*d.values(),ident])
@@ -77,9 +77,9 @@ class Editor(Gtk.Dialog):
   if row and row['download_url']:
    open_link=Gtk.Button(label='Abrir enlace'); open_link.connect('clicked',lambda *_: Gio.AppInfo.launch_default_for_uri(row['download_url'],None)); actions.append(open_link)
   if row:
-   remove=Gtk.Button(label='Eliminar'); actions.append(remove)
+   remove=Gtk.Button(label='Eliminar'); remove.add_css_class('destructive-action'); actions.append(remove)
    def confirm_delete(*_):
-    confirm=Gtk.MessageDialog(transient_for=s,text=f'¿Eliminar la petición «{row["title"]}»?',buttons=Gtk.ButtonsType.YES_NO); confirm.connect('response',lambda dialog,response:(s.store.delete(row['id']),dialog.close(),s.close()) if response==Gtk.ResponseType.YES else dialog.close()); confirm.present()
+    confirm=Gtk.MessageDialog(transient_for=s,text=f'¿Eliminar la petición «{row["title"]}»?',buttons=Gtk.ButtonsType.NONE); confirm.add_button('Cancelar',Gtk.ResponseType.CANCEL); confirm.add_button('Aceptar',Gtk.ResponseType.OK); confirm.get_widget_for_response(Gtk.ResponseType.OK).add_css_class('destructive-action'); confirm.connect('response',lambda dialog,response:(s.store.delete(row['id']),dialog.close(),s.close()) if response==Gtk.ResponseType.OK else dialog.close()); confirm.present()
    remove.connect('clicked',confirm_delete)
   actions.append(save); outer.append(actions); cancel.connect('clicked',lambda *_:s.close()); save.connect('clicked',lambda *_:s.response(None,Gtk.ResponseType.OK)); s.present()
   if row and row['poster_path'] and Path(row['poster_path']).exists(): s.poster.set_from_file(row['poster_path'])
