@@ -1,8 +1,22 @@
-joseflix-request (1.0.0-2ubuntu4) UNRELEASED; urgency=medium
+joseflix-request (1.0.0-2ubuntu6) noble; urgency=medium
+
+  * Correct double click error without request date  Calendar widget to
+    enter request date
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Thu, 17 Sep 2026 16:58:05 +0200
+
+joseflix-request (1.0.0-2ubuntu5) noble; urgency=medium
+
+  * Improvements in main view for a better user experience.  Add request
+    date
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Thu, 17 Sep 2026 16:47:13 +0200
+
+joseflix-request (1.0.0-2ubuntu4) noble; urgency=medium
 
   * Add backup and restore backup option
 
- -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Thu, 17 Sep 2026 15:17:48 +0200
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Thu, 17 Sep 2026 16:46:11 +0200
 
 joseflix-request (1.0.0-2ubuntu3) noble; urgency=medium
 
