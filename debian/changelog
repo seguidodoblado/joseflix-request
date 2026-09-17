@@ -1,3 +1,9 @@
+joseflix-request (1.0.0-2ubuntu4) UNRELEASED; urgency=medium
+
+  * Add backup and restore backup option
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Thu, 17 Sep 2026 15:17:48 +0200
+
 joseflix-request (1.0.0-2ubuntu3) noble; urgency=medium
 
   * I justify the text on the synopsis sheet

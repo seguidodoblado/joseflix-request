@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-import json, os, re, sqlite3, urllib.parse, urllib.request
+import json, os, re, shutil, sqlite3, urllib.parse, urllib.request
+from datetime import datetime
 from pathlib import Path
 import gi
 gi.require_version('Gtk','4.0')
 from gi.repository import Gtk, Gio, GLib, GdkPixbuf, Gdk
 
 APP_DIR=Path(os.environ.get('XDG_DATA_HOME',Path.home()/'.local/share'))/'joseflix-request'; APP_DIR.mkdir(parents=True,exist_ok=True)
-DB=APP_DIR/'joseflix.sqlite3'; STATUSES=['📨 Solicitado','🔎 Buscando','📥 Descargado','📤 Subido','✅ Notificado','🔧 Corregir']; TYPES=['🎬 Película','📺 Serie']; METHODS=['❓ Sin método','⬇️ JDownloader','🧲 Transmission','🐴 aMule']; APP_VERSION=(Path(__file__).with_name('VERSION').read_text().strip() if Path(__file__).with_name('VERSION').exists() else '1.0.0')
+DB=APP_DIR/'joseflix.sqlite3'; STATUSES=['📨 Solicitado','🔎 Buscando','📥 Descargado','📤 Subido','✅ Notificado','🔧 Corregir']; TYPES=['🎬 Película','📺 Serie']; METHODS=['❓ Sin método','⬇️ JDownloader','🧲 Transmission','🐴 aMule']; PRIORITIES=['🔴 Alta','🟡 Normal','🟢 Baja']; APP_VERSION=(Path(__file__).with_name('VERSION').read_text().strip() if Path(__file__).with_name('VERSION').exists() else '1.0.0')
 CONFIG=APP_DIR/'config.json'
 def get_token():
  try: return json.loads(CONFIG.read_text()).get('tmdb_token','')
@@ -17,13 +18,23 @@ def set_token(value):
     except (FileNotFoundError, json.JSONDecodeError): pass
     cfg['tmdb_token'] = value
     CONFIG.write_text(json.dumps(cfg))
+BACKUPS_DIR=APP_DIR/'backups'; BACKUPS_DIR.mkdir(exist_ok=True)
+def make_backup():
+ if not DB.exists(): return None
+ dest=BACKUPS_DIR/f'joseflix-{datetime.now().strftime("%Y%m%d-%H%M%S-%f")}.sqlite3'; shutil.copy2(DB,dest)
+ for old in sorted(BACKUPS_DIR.glob('joseflix-*.sqlite3'))[:-10]: old.unlink()
+ return dest
+def list_backups(): return sorted(BACKUPS_DIR.glob('joseflix-*.sqlite3'),reverse=True)
 def plain(x): return x.split(' ',1)[-1]
 class Store:
  def __init__(s):
-  s.db=sqlite3.connect(DB); s.db.row_factory=sqlite3.Row; s.db.execute('CREATE TABLE IF NOT EXISTS requests (id INTEGER PRIMARY KEY,tmdb_id INTEGER,media_type TEXT,title TEXT,year TEXT,overview TEXT,poster_path TEXT,tmdb_url TEXT,requester TEXT,status TEXT,download_method TEXT,download_url TEXT,notes TEXT)'); s.db.execute('CREATE TABLE IF NOT EXISTS requesters (name TEXT PRIMARY KEY)'); s.db.execute('INSERT OR IGNORE INTO requesters SELECT DISTINCT requester FROM requests WHERE requester!=""'); s.db.commit()
- def rows(s,text='',status='Todos',typ='Todos',requester='Todos'):
+  make_backup(); s.db=sqlite3.connect(DB); s.db.row_factory=sqlite3.Row; s.db.execute('CREATE TABLE IF NOT EXISTS requests (id INTEGER PRIMARY KEY,tmdb_id INTEGER,media_type TEXT,title TEXT,year TEXT,overview TEXT,poster_path TEXT,tmdb_url TEXT,requester TEXT,status TEXT,download_method TEXT,download_url TEXT,notes TEXT,priority TEXT)')
+  try: s.db.execute('ALTER TABLE requests ADD COLUMN priority TEXT')
+  except sqlite3.OperationalError: pass
+  s.db.execute('CREATE TABLE IF NOT EXISTS requesters (name TEXT PRIMARY KEY)'); s.db.execute('INSERT OR IGNORE INTO requesters SELECT DISTINCT requester FROM requests WHERE requester!=""'); s.db.commit()
+ def rows(s,text='',status='Todos',typ='Todos',requester='Todos',priority='Todos'):
   q='SELECT * FROM requests WHERE title LIKE ?'; a=[f'%{text}%']
-  for v,c in [(plain(status),'status'),(plain(typ),'media_type'),(requester,'requester')]:
+  for v,c in [(plain(status),'status'),(plain(typ),'media_type'),(requester,'requester'),(plain(priority),'priority')]:
    if v!='Todos': q+=f' AND {c}=?'; a.append(v)
   return s.db.execute(q+' ORDER BY id DESC',a).fetchall()
  def requesters(s): return [x[0] for x in s.db.execute('SELECT name FROM requesters ORDER BY name')]
@@ -58,20 +69,21 @@ class Editor(Gtk.Dialog):
   s.status=Gtk.DropDown.new_from_strings(STATUSES); s.status.set_selected(next((i for i,x in enumerate(STATUSES) if row and plain(x)==row['status']),0)); grid.attach(Gtk.Label(label='Estado:',xalign=0),0,4,1,1); grid.attach(s.status,1,4,1,1)
   s.typ=Gtk.DropDown.new_from_strings(TYPES); s.typ.set_selected(0 if not row or row['media_type']=='Película' else 1); grid.attach(Gtk.Label(label='Tipo:',xalign=0),0,5,1,1); grid.attach(s.typ,1,5,1,1)
   s.method=Gtk.DropDown.new_from_strings(METHODS); s.method.set_selected(next((i for i,x in enumerate(METHODS) if plain(x)==(row['download_method'] if row else '')),0)); grid.attach(Gtk.Label(label='Método de descarga:',xalign=0),0,6,1,1); grid.attach(s.method,1,6,1,1)
+  s.priority=Gtk.DropDown.new_from_strings(PRIORITIES); s.priority.set_selected(next((i for i,x in enumerate(PRIORITIES) if row and plain(x)==row['priority']),1)); grid.attach(Gtk.Label(label='Prioridad:',xalign=0),0,7,1,1); grid.attach(s.priority,1,7,1,1)
   cancel=Gtk.Button(label='Cancelar'); save=Gtk.Button(label='Guardar'); actions=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8); actions.set_halign(Gtk.Align.END); actions.set_margin_start(16); actions.set_margin_end(16); actions.set_margin_bottom(16); actions.append(cancel)
   if row and row['download_url']:
    open_link=Gtk.Button(label='Abrir enlace'); open_link.connect('clicked',lambda *_: Gio.AppInfo.launch_default_for_uri(row['download_url'],None)); actions.append(open_link)
   if row:
    remove=Gtk.Button(label='Eliminar'); actions.append(remove)
    def confirm_delete(*_):
-    confirm=Gtk.MessageDialog(transient_for=s,text=f'¿Eliminar la petición «{row["title"]}»?',buttons=Gtk.ButtonsType.YES_NO); confirm.connect('response',lambda dialog,response:(s.store.delete(row['id']),s.close()) if response==Gtk.ResponseType.YES else dialog.close()); confirm.present()
+    confirm=Gtk.MessageDialog(transient_for=s,text=f'¿Eliminar la petición «{row["title"]}»?',buttons=Gtk.ButtonsType.YES_NO); confirm.connect('response',lambda dialog,response:(s.store.delete(row['id']),dialog.close(),s.close()) if response==Gtk.ResponseType.YES else dialog.close()); confirm.present()
    remove.connect('clicked',confirm_delete)
   actions.append(save); outer.append(actions); cancel.connect('clicked',lambda *_:s.close()); save.connect('clicked',lambda *_:s.response(None,Gtk.ResponseType.OK)); s.present()
   if row and row['poster_path'] and Path(row['poster_path']).exists(): s.poster.set_from_file(row['poster_path'])
  def response(s,_,response):
   if response==Gtk.ResponseType.OK:
-   try: s.data=tmdb(s.fields['URL TMDB:'].get_text()); s.data.update(requester='' if not s.store.requesters() else s.requester.get_selected_item().get_string(),download_url=s.fields['Enlace de descarga:'].get_text(),notes=s.fields['Notas:'].get_buffer().get_text(s.fields['Notas:'].get_buffer().get_start_iter(),s.fields['Notas:'].get_buffer().get_end_iter(),False),status=plain(s.status.get_selected_item().get_string()),media_type=plain(s.typ.get_selected_item().get_string()),download_method=plain(s.method.get_selected_item().get_string())); s.store.save(s.data,s.row['id'] if s.row else None)
-   except Exception as e: s.error=Gtk.MessageDialog(transient_for=s,text=str(e),buttons=Gtk.ButtonsType.OK); s.error.show(); return
+   try: s.data=tmdb(s.fields['URL TMDB:'].get_text()); s.data.update(requester='' if not s.store.requesters() else s.requester.get_selected_item().get_string(),download_url=s.fields['Enlace de descarga:'].get_text(),notes=s.fields['Notas:'].get_buffer().get_text(s.fields['Notas:'].get_buffer().get_start_iter(),s.fields['Notas:'].get_buffer().get_end_iter(),False),status=plain(s.status.get_selected_item().get_string()),media_type=plain(s.typ.get_selected_item().get_string()),download_method=plain(s.method.get_selected_item().get_string()),priority=plain(s.priority.get_selected_item().get_string())); s.store.save(s.data,s.row['id'] if s.row else None)
+   except Exception as e: s.error=Gtk.MessageDialog(transient_for=s,text=str(e),buttons=Gtk.ButtonsType.OK); s.error.connect('response',lambda dialog,_:dialog.close()); s.error.present(); return
   s.close()
 class App(Gtk.Application):
  def __init__(s): super().__init__(application_id='es.joseflix.Request'); s.store=Store()
@@ -81,8 +93,8 @@ class App(Gtk.Application):
    b=Gtk.Button(); content=Gtk.Box(spacing=8); content.append(Gtk.Image.new_from_icon_name(icon)); content.append(Gtk.Label(label=label,xalign=0)); b.set_child(content); b.set_halign(Gtk.Align.FILL); b.connect('clicked',lambda _,fn=callback:(pop.popdown(),fn())); box.append(b)
   pop.set_child(box); button.set_popover(pop)
  def do_activate(s):
-  s.win=Gtk.ApplicationWindow(application=s,title='Joseflix — Peticiones',default_width=1100,default_height=700); root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); root.set_margin_start(12); root.set_margin_end(12); root.set_margin_top(8); root.set_margin_bottom(8); s.win.set_child(root); menubar=Gtk.Box(spacing=8); ajustes=Gtk.MenuButton(); ver=Gtk.MenuButton(); ayuda=Gtk.MenuButton(); [(b.set_child(c),menubar.append(b)) for b,c in [(ajustes,Gtk.Box(spacing=6)),(ver,Gtk.Box(spacing=6)),(ayuda,Gtk.Box(spacing=6))]]; ajustes.get_child().append(Gtk.Image.new_from_icon_name('preferences-system')); ajustes.get_child().append(Gtk.Label(label='Ajustes')); ver.get_child().append(Gtk.Image.new_from_icon_name('preferences-desktop-theme')); ver.get_child().append(Gtk.Label(label='Tema')); ayuda.get_child().append(Gtk.Image.new_from_icon_name('help-browser')); ayuda.get_child().append(Gtk.Label(label='Ayuda')); s.menu_popover(ajustes,[('Configurar TMDB…','system-lock-screen',s.settings),('Gestionar peticionarios…','system-users',s.requesters)]); s.menu_popover(ver,[('Modo claro','weather-clear',lambda:s.theme(False)),('Modo oscuro','weather-clear-night',lambda:s.theme(True))]); s.menu_popover(ayuda,[('Acerca de','help-about',s.about)]); root.append(menubar)
-  bar=Gtk.Box(spacing=8); root.append(bar); s.search=Gtk.SearchEntry(placeholder_text='Buscar título'); s.status=Gtk.DropDown.new_from_strings(['Todos']+STATUSES); s.typ=Gtk.DropDown.new_from_strings(['Todos']+TYPES); s.req=Gtk.DropDown.new_from_strings(['Todos']+s.store.requesters()); add=Gtk.Button(label='Nueva petición'); add.connect('clicked',lambda *_:s.new()); bar.append(s.search); bar.append(Gtk.Label(label='Estado:')); bar.append(s.status); bar.append(Gtk.Label(label='Tipo:')); bar.append(s.typ); bar.append(Gtk.Label(label='Peticionario:')); bar.append(s.req); bar.append(add); s.search.connect('search-changed',lambda *_:s.refresh()); [x.connect('notify::selected-item',lambda *_:s.refresh()) for x in [s.status,s.typ,s.req]]; s.list=Gtk.ListBox(); s.list.set_activate_on_single_click(False); s.list.connect('row-activated',lambda _,row:s.open(row.data)); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(s.list); root.append(scroll); s.refresh(); s.add_actions()
+  s.win=Gtk.ApplicationWindow(application=s,title='Joseflix — Peticiones',default_width=1100,default_height=700); root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); root.set_margin_start(12); root.set_margin_end(12); root.set_margin_top(8); root.set_margin_bottom(8); s.win.set_child(root); menubar=Gtk.Box(spacing=8); ajustes=Gtk.MenuButton(); ver=Gtk.MenuButton(); ayuda=Gtk.MenuButton(); [(b.set_child(c),menubar.append(b)) for b,c in [(ajustes,Gtk.Box(spacing=6)),(ver,Gtk.Box(spacing=6)),(ayuda,Gtk.Box(spacing=6))]]; ajustes.get_child().append(Gtk.Image.new_from_icon_name('preferences-system')); ajustes.get_child().append(Gtk.Label(label='Ajustes')); ver.get_child().append(Gtk.Image.new_from_icon_name('preferences-desktop-theme')); ver.get_child().append(Gtk.Label(label='Tema')); ayuda.get_child().append(Gtk.Image.new_from_icon_name('help-browser')); ayuda.get_child().append(Gtk.Label(label='Ayuda')); s.menu_popover(ajustes,[('Configurar TMDB…','system-lock-screen',s.settings),('Gestionar peticionarios…','system-users',s.requesters),('Copia de seguridad ahora','document-save',s.backup_now),('Restaurar copia de seguridad…','document-revert',s.restore_backup)]); s.menu_popover(ver,[('Modo claro','weather-clear',lambda:s.theme(False)),('Modo oscuro','weather-clear-night',lambda:s.theme(True))]); s.menu_popover(ayuda,[('Acerca de','help-about',s.about)]); root.append(menubar)
+  bar=Gtk.Box(spacing=8); root.append(bar); s.search=Gtk.SearchEntry(placeholder_text='Buscar título'); s.status=Gtk.DropDown.new_from_strings(['Todos']+STATUSES); s.typ=Gtk.DropDown.new_from_strings(['Todos']+TYPES); s.req=Gtk.DropDown.new_from_strings(['Todos']+s.store.requesters()); s.priority=Gtk.DropDown.new_from_strings(['Todos']+PRIORITIES); add=Gtk.Button(label='Nueva petición'); add.connect('clicked',lambda *_:s.new()); bar.append(s.search); bar.append(Gtk.Label(label='Estado:')); bar.append(s.status); bar.append(Gtk.Label(label='Tipo:')); bar.append(s.typ); bar.append(Gtk.Label(label='Peticionario:')); bar.append(s.req); bar.append(Gtk.Label(label='Prioridad:')); bar.append(s.priority); bar.append(add); s.search.connect('search-changed',lambda *_:s.refresh()); [x.connect('notify::selected-item',lambda *_:s.refresh()) for x in [s.status,s.typ,s.req,s.priority]]; s.list=Gtk.ListBox(); s.list.set_activate_on_single_click(False); s.list.connect('row-activated',lambda _,row:s.open(row.data)); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(s.list); root.append(scroll); s.refresh(); s.add_actions()
   s.win.set_default_size(1100,700); s.win.set_decorated(True); s.win.set_resizable(True)
   try:
    cfg=json.loads(CONFIG.read_text())
@@ -90,11 +102,11 @@ class App(Gtk.Application):
   except (FileNotFoundError, json.JSONDecodeError): pass
   s.win.present()
  def add_actions(s):
-  for name,fn in [('settings',s.settings),('requesters',s.requesters),('about',s.about),('light',lambda:s.theme(False)),('dark',lambda:s.theme(True))]: a=Gio.SimpleAction.new(name,None); a.connect('activate',lambda _,__,f=fn:f()); s.add_action(a)
+  for name,fn in [('settings',s.settings),('requesters',s.requesters),('about',s.about),('light',lambda:s.theme(False)),('dark',lambda:s.theme(True)),('backup',s.backup_now),('restore',s.restore_backup)]: a=Gio.SimpleAction.new(name,None); a.connect('activate',lambda _,__,f=fn:f()); s.add_action(a)
  def refresh(s):
   while (r:=s.list.get_row_at_index(0)): s.list.remove(r)
-  for r in s.store.rows(s.search.get_text(),s.status.get_selected_item().get_string(),s.typ.get_selected_item().get_string(),s.req.get_selected_item().get_string()):
-   row=Gtk.ListBoxRow(); row.data=r; box=Gtk.Box(spacing=12); image=Gtk.Image(); image.set_pixel_size(120); image.set_from_file(r['poster_path']) if r['poster_path'] and Path(r['poster_path']).exists() else None; box.append(image); method=next((x for x in METHODS if plain(x)==r['download_method']),r['download_method'] or 'Sin método'); status=next((x for x in STATUSES if plain(x)==r['status']),r['status']); media=next((x for x in TYPES if plain(x)==r['media_type']),r['media_type']); box.append(Gtk.Label(label=f"{r['title']} ({r['year'] or '—'})  ·  {media}  ·  {r['requester']}  ·  {status}\n{method}  ·  {r['download_url'] or 'Sin enlace de descarga'}",xalign=0)); row.set_child(box); s.list.append(row)
+  for r in s.store.rows(s.search.get_text(),s.status.get_selected_item().get_string(),s.typ.get_selected_item().get_string(),s.req.get_selected_item().get_string(),s.priority.get_selected_item().get_string()):
+   row=Gtk.ListBoxRow(); row.data=r; box=Gtk.Box(spacing=12); image=Gtk.Image(); image.set_pixel_size(120); image.set_from_file(r['poster_path']) if r['poster_path'] and Path(r['poster_path']).exists() else None; box.append(image); method=next((x for x in METHODS if plain(x)==r['download_method']),r['download_method'] or 'Sin método'); status=next((x for x in STATUSES if plain(x)==r['status']),r['status']); media=next((x for x in TYPES if plain(x)==r['media_type']),r['media_type']); priority=next((x for x in PRIORITIES if plain(x)==r['priority']),'🟡 Normal'); box.append(Gtk.Label(label=f"{r['title']} ({r['year'] or '—'})  ·  {media}  ·  {r['requester']}  ·  {status}  ·  {priority}\n{method}  ·  {r['download_url'] or 'Sin enlace de descarga'}",xalign=0)); row.set_child(box); s.list.append(row)
  def new(s):
   d=Editor(s.win,s.store); d.connect('response',lambda *_:s.refresh()); d.present()
  def open(s,r):
@@ -122,6 +134,24 @@ class App(Gtk.Application):
    if not selected: return
    name=selected.get_child().get_text(); confirm=Gtk.MessageDialog(transient_for=d,text=f'¿Eliminar el peticionario «{name}»?',buttons=Gtk.ButtonsType.YES_NO); confirm.connect('response',lambda dialog,response:(s.store.delete_requester(name),load(),s.refresh(),dialog.close()) if response==Gtk.ResponseType.YES else dialog.close()); confirm.present()
   lst.connect('row-selected',lambda _,row: entry.set_text(row.get_child().get_text()) if row else entry.set_text('')); add.connect('clicked',create); edit.connect('clicked',rename); remove.connect('clicked',delete_requester); load(); d.present(); GLib.idle_add(lambda: (lst.select_row(None),entry.set_text(''),False)[-1])
+ def backup_now(s):
+  s.store.db.commit(); dest=make_backup(); msg=f'Copia de seguridad creada:\n{dest}' if dest else 'No hay base de datos que respaldar todavía.'; info=Gtk.MessageDialog(transient_for=s.win,text=msg,buttons=Gtk.ButtonsType.OK); info.connect('response',lambda dialog,_:dialog.close()); info.present()
+ def restore_backup(s):
+  backups=list_backups()
+  if not backups:
+   info=Gtk.MessageDialog(transient_for=s.win,text='No hay copias de seguridad disponibles.',buttons=Gtk.ButtonsType.OK); info.connect('response',lambda dialog,_:dialog.close()); info.present(); return
+  d=Gtk.Dialog(title='Restaurar copia de seguridad',transient_for=s.win,modal=True,default_width=420,default_height=420); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); box.set_margin_start(16); box.set_margin_end(16); box.set_margin_top(16); box.set_margin_bottom(16); d.set_child(box); box.append(Gtk.Label(label='Selecciona una copia de seguridad para restaurar:',xalign=0)); lst=Gtk.ListBox(); lst.set_vexpand(True); list_scroll=Gtk.ScrolledWindow(); list_scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC); list_scroll.set_child(lst); box.append(list_scroll)
+  for b in backups: lst.append(Gtk.Label(label=b.name,xalign=0))
+  restore=Gtk.Button(label='Restaurar'); restore.set_halign(Gtk.Align.END); box.append(restore)
+  def confirmed(dialog,response):
+   dialog.close()
+   if response!=Gtk.ResponseType.YES: return
+   make_backup(); s.store.db.close(); shutil.copy2(backups[lst.get_selected_row().get_index()],DB); d.close(); done=Gtk.MessageDialog(transient_for=s.win,text='Copia restaurada correctamente. La aplicación se cerrará; vuelve a abrirla.',buttons=Gtk.ButtonsType.OK); done.connect('response',lambda *_:s.quit()); done.present()
+  def do_restore(*_):
+   selected=lst.get_selected_row()
+   if not selected: return
+   confirm=Gtk.MessageDialog(transient_for=d,text=f'¿Restaurar «{backups[selected.get_index()].name}»?\n\nSe sobrescribirán los datos actuales (se guarda antes una copia de seguridad del estado actual). La aplicación se cerrará para aplicar los cambios.',buttons=Gtk.ButtonsType.YES_NO); confirm.connect('response',confirmed); confirm.present()
+  restore.connect('clicked',do_restore); d.present()
  def about(s):
   d=Gtk.Dialog(title='Acerca de Joseflix Request',transient_for=s.win,modal=True); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); box.set_margin_start(28); box.set_margin_end(28); box.set_margin_top(24); box.set_margin_bottom(24); d.set_child(box); icon=Gtk.Image(); icon_path='/usr/share/icons/hicolor/scalable/apps/joseflix-request.svg'; icon.set_from_file(icon_path if Path(icon_path).exists() else str(Path(__file__).with_name('joseflix-request.svg'))); icon.set_pixel_size(96); box.append(icon); info=Gtk.Label(); info.set_markup(f'<big><b>Joseflix Request</b></big>\n\nVersión {APP_VERSION}\nGestor de peticiones para Joseflix\n\nDesarrollador:\nseguidodoblado\njose.antonio.seguido@gmail.com\n\nDependencia:\nPyGObject + GTK 4'); info.set_justify(Gtk.Justification.CENTER); box.append(info); close=Gtk.Button(label='Cerrar'); close.set_halign(Gtk.Align.CENTER); close.connect('clicked',lambda *_:d.close()); box.append(close); d.present()
  def theme(s,dark):
