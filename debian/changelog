@@ -1,8 +1,14 @@
-joseflix-request (1.0.0-2ubuntu2) UNRELEASED; urgency=medium
+joseflix-request (1.0.0-2ubuntu3) noble; urgency=medium
+
+  * I justify the text on the synopsis sheet
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Thu, 17 Sep 2026 14:54:36 +0200
+
+joseflix-request (1.0.0-2ubuntu2) noble; urgency=medium
 
   * Minor fix for light or dark theme persistence when starting the app
 
- -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Sat, 12 Sep 2026 01:06:56 +0200
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Thu, 17 Sep 2026 14:54:23 +0200
 
 joseflix-request (1.0.0-2ubuntu1) noble; urgency=medium
 
