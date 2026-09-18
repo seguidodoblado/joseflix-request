@@ -1,3 +1,27 @@
+joseflix-request (1.0.0-2ubuntu11) noble; urgency=medium
+
+  * Add Clear Notified button
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Fri, 18 Sep 2026 19:01:06 +0200
+
+joseflix-request (1.0.0-2ubuntu10) noble; urgency=medium
+
+  * Set background color in Searching and Notified states
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Fri, 18 Sep 2026 18:55:37 +0200
+
+joseflix-request (1.0.0-2ubuntu9) noble; urgency=medium
+
+  * Add counter of requests visible on the screen
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Fri, 18 Sep 2026 18:50:35 +0200
+
+joseflix-request (1.0.0-2ubuntu8) noble; urgency=medium
+
+  * Sort request by request date Different poster sizes
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Thu, 17 Sep 2026 18:56:43 +0200
+
 joseflix-request (1.0.0-2ubuntu7) noble; urgency=medium
 
   * Main view sorted by request date

@@ -38,13 +38,16 @@ class Store:
   for v,c in [(plain(status),'status'),(plain(typ),'media_type'),(requester,'requester'),(plain(priority),'priority')]:
    if v!='Todos': q+=f' AND {c}=?'; a.append(v)
   if date: q+=' AND request_date LIKE ?'; a.append(f'%{date}%')
-  return s.db.execute(q+' ORDER BY request_date DESC, id DESC',a).fetchall()
+  return s.db.execute(q+' ORDER BY (request_date IS NULL), request_date ASC, id ASC',a).fetchall()
  def requesters(s): return [x[0] for x in s.db.execute('SELECT name FROM requesters ORDER BY name')]
  def save(s,d,ident=None):
   if ident: s.db.execute('UPDATE requests SET '+','.join(f'{k}=?' for k in d)+' WHERE id=?',[*d.values(),ident])
   else: s.db.execute('INSERT INTO requests ('+','.join(d)+') VALUES ('+','.join('?' for _ in d)+')',list(d.values()))
   s.db.commit()
  def delete(s,i): s.db.execute('DELETE FROM requests WHERE id=?',(i,)); s.db.commit()
+ def notified_count(s): return s.db.execute("SELECT COUNT(*) FROM requests WHERE status='Notificado'").fetchone()[0]
+ def clear_notified(s):
+  for i in [r['id'] for r in s.db.execute("SELECT id FROM requests WHERE status='Notificado'").fetchall()]: s.delete(i)
  def add_requester(s,n): s.db.execute('INSERT OR IGNORE INTO requesters(name) VALUES (?)',(n,)); s.db.commit()
  def rename_requester(s,o,n): s.db.execute('UPDATE requesters SET name=? WHERE name=?',(n,o)); s.db.execute('UPDATE requests SET requester=? WHERE requester=?',(n,o)); s.db.commit()
  def delete_requester(s,n): s.db.execute('DELETE FROM requesters WHERE name=?',(n,)); s.db.execute('UPDATE requests SET requester="" WHERE requester=?',(n,)); s.db.commit()
@@ -73,7 +76,7 @@ class Editor(Gtk.Dialog):
   s.typ=Gtk.DropDown.new_from_strings(TYPES); s.typ.set_selected(0 if not row or row['media_type']=='Película' else 1); grid.attach(Gtk.Label(label='Tipo:',xalign=0),0,5,1,1); grid.attach(s.typ,1,5,1,1)
   s.method=Gtk.DropDown.new_from_strings(METHODS); s.method.set_selected(next((i for i,x in enumerate(METHODS) if plain(x)==(row['download_method'] if row else '')),0)); grid.attach(Gtk.Label(label='Método de descarga:',xalign=0),0,6,1,1); grid.attach(s.method,1,6,1,1)
   s.priority=Gtk.DropDown.new_from_strings(PRIORITIES); s.priority.set_selected(next((i for i,x in enumerate(PRIORITIES) if row and plain(x)==row['priority']),1)); grid.attach(Gtk.Label(label='Prioridad:',xalign=0),0,7,1,1); grid.attach(s.priority,1,7,1,1)
-  cancel=Gtk.Button(label='Cancelar'); save=Gtk.Button(label='Guardar'); actions=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8); actions.set_halign(Gtk.Align.END); actions.set_margin_start(16); actions.set_margin_end(16); actions.set_margin_bottom(16); actions.append(cancel)
+  cancel=Gtk.Button(label='Cancelar'); save=Gtk.Button(label='Guardar'); save.add_css_class('save-action'); actions=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8); actions.set_halign(Gtk.Align.END); actions.set_margin_start(16); actions.set_margin_end(16); actions.set_margin_bottom(16); actions.append(cancel)
   if row and row['download_url']:
    open_link=Gtk.Button(label='Abrir enlace'); open_link.connect('clicked',lambda *_: Gio.AppInfo.launch_default_for_uri(row['download_url'],None)); actions.append(open_link)
   if row:
@@ -95,10 +98,21 @@ class App(Gtk.Application):
   for label,icon,callback in items:
    b=Gtk.Button(); content=Gtk.Box(spacing=8); content.append(Gtk.Image.new_from_icon_name(icon)); content.append(Gtk.Label(label=label,xalign=0)); b.set_child(content); b.set_halign(Gtk.Align.FILL); b.connect('clicked',lambda _,fn=callback:(pop.popdown(),fn())); box.append(b)
   pop.set_child(box); button.set_popover(pop)
+ def view_menu(s,button):
+  pop=Gtk.Popover(); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6); box.set_margin_start(10); box.set_margin_end(10); box.set_margin_top(8); box.set_margin_bottom(8)
+  for label,icon,callback in [('Modo claro','weather-clear',lambda:s.theme(False)),('Modo oscuro','weather-clear-night',lambda:s.theme(True))]:
+   b=Gtk.Button(); content=Gtk.Box(spacing=8); content.append(Gtk.Image.new_from_icon_name(icon)); content.append(Gtk.Label(label=label,xalign=0)); b.set_child(content); b.set_halign(Gtk.Align.FILL); b.connect('clicked',lambda _,fn=callback:(pop.popdown(),fn())); box.append(b)
+  box.append(Gtk.Separator()); box.append(Gtk.Label(label='Tamaño de póster',xalign=0))
+  scale=Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL,adjustment=Gtk.Adjustment(value=s.poster_size,lower=64,upper=160,step_increment=8,page_increment=16)); scale.set_digits(0); scale.set_draw_value(True); scale.set_size_request(140,-1); scale.set_hexpand(False)
+  for v in (64,96,120,160): scale.add_mark(v,Gtk.PositionType.BOTTOM,None)
+  scale.connect('value-changed',lambda sc:s.set_poster_size(int(sc.get_value()))); box.append(scale)
+  pop.set_child(box); button.set_popover(pop)
  def do_activate(s):
-  css=Gtk.CssProvider(); css.load_from_string('label.priority-alta{color:#e01b24;} label.priority-normal{color:#e5a50a;} label.priority-baja{color:#26a269;}'); Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-  s.win=Gtk.ApplicationWindow(application=s,title='Joseflix — Peticiones',default_width=1100,default_height=700); root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); root.set_margin_start(12); root.set_margin_end(12); root.set_margin_top(8); root.set_margin_bottom(8); s.win.set_child(root); menubar=Gtk.Box(spacing=8); ajustes=Gtk.MenuButton(); ver=Gtk.MenuButton(); ayuda=Gtk.MenuButton(); [(b.set_child(c),menubar.append(b)) for b,c in [(ajustes,Gtk.Box(spacing=6)),(ver,Gtk.Box(spacing=6)),(ayuda,Gtk.Box(spacing=6))]]; ajustes.get_child().append(Gtk.Image.new_from_icon_name('preferences-system')); ajustes.get_child().append(Gtk.Label(label='Ajustes')); ver.get_child().append(Gtk.Image.new_from_icon_name('preferences-desktop-theme')); ver.get_child().append(Gtk.Label(label='Tema')); ayuda.get_child().append(Gtk.Image.new_from_icon_name('help-browser')); ayuda.get_child().append(Gtk.Label(label='Ayuda')); s.menu_popover(ajustes,[('Configurar TMDB…','system-lock-screen',s.settings),('Gestionar peticionarios…','system-users',s.requesters),('Copia de seguridad ahora','document-save',s.backup_now),('Restaurar copia de seguridad…','document-revert',s.restore_backup)]); s.menu_popover(ver,[('Modo claro','weather-clear',lambda:s.theme(False)),('Modo oscuro','weather-clear-night',lambda:s.theme(True))]); s.menu_popover(ayuda,[('Acerca de','help-about',s.about)]); root.append(menubar)
-  bar=Gtk.Box(spacing=8); root.append(bar); s.search=Gtk.SearchEntry(placeholder_text='Buscar título'); s.status=Gtk.DropDown.new_from_strings(['Todos']+STATUSES); s.typ=Gtk.DropDown.new_from_strings(['Todos']+TYPES); s.req=Gtk.DropDown.new_from_strings(['Todos']+s.store.requesters()); s.priority=Gtk.DropDown.new_from_strings(['Todos']+PRIORITIES); s.date=Gtk.SearchEntry(placeholder_text='AAAA-MM-DD'); add=Gtk.Button(label='Nueva petición'); add.connect('clicked',lambda *_:s.new()); bar.append(s.search); bar.append(Gtk.Label(label='Estado:')); bar.append(s.status); bar.append(Gtk.Label(label='Tipo:')); bar.append(s.typ); bar.append(Gtk.Label(label='Peticionario:')); bar.append(s.req); bar.append(Gtk.Label(label='Prioridad:')); bar.append(s.priority); bar.append(Gtk.Label(label='Fecha:')); bar.append(s.date); bar.append(add); s.search.connect('search-changed',lambda *_:s.refresh()); s.date.connect('search-changed',lambda *_:s.refresh()); [x.connect('notify::selected-item',lambda *_:s.refresh()) for x in [s.status,s.typ,s.req,s.priority]]; s.list=Gtk.ListBox(); s.list.set_activate_on_single_click(False); s.list.connect('row-activated',lambda _,row:s.open(row.data)); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(s.list); root.append(scroll); s.refresh(); s.add_actions()
+  css=Gtk.CssProvider(); css.load_from_string('label.priority-alta{color:#e01b24;} label.priority-normal{color:#e5a50a;} label.priority-baja{color:#26a269;} button.save-action{background-image:none;background-color:#26a269;color:#fff;} row.status-notificado{background-color:rgba(38,162,105,0.18);} row.status-buscando{background-color:rgba(224,27,36,0.18);} button.new-action{background-image:none;background-color:#3584e4;color:#fff;}'); Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+  try: s.poster_size=json.loads(CONFIG.read_text()).get('poster_size',96)
+  except (FileNotFoundError, json.JSONDecodeError): s.poster_size=96
+  s.win=Gtk.ApplicationWindow(application=s,title='Joseflix — Peticiones',default_width=1100,default_height=700); root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); root.set_margin_start(12); root.set_margin_end(12); root.set_margin_top(8); root.set_margin_bottom(8); s.win.set_child(root); menubar=Gtk.Box(spacing=8); ajustes=Gtk.MenuButton(); ver=Gtk.MenuButton(); ayuda=Gtk.MenuButton(); [(b.set_child(c),menubar.append(b)) for b,c in [(ajustes,Gtk.Box(spacing=6)),(ver,Gtk.Box(spacing=6)),(ayuda,Gtk.Box(spacing=6))]]; ajustes.get_child().append(Gtk.Image.new_from_icon_name('preferences-system')); ajustes.get_child().append(Gtk.Label(label='Ajustes')); ver.get_child().append(Gtk.Image.new_from_icon_name('preferences-desktop-theme')); ver.get_child().append(Gtk.Label(label='Tema')); ayuda.get_child().append(Gtk.Image.new_from_icon_name('help-browser')); ayuda.get_child().append(Gtk.Label(label='Ayuda')); s.menu_popover(ajustes,[('Configurar TMDB…','system-lock-screen',s.settings),('Gestionar peticionarios…','system-users',s.requesters),('Copia de seguridad ahora','document-save',s.backup_now),('Restaurar copia de seguridad…','document-revert',s.restore_backup)]); s.view_menu(ver); s.menu_popover(ayuda,[('Acerca de','help-about',s.about)]); spacer=Gtk.Box(hexpand=True); menubar.append(spacer); clear_btn=Gtk.Button(label='Limpiar notificados'); clear_btn.add_css_class('save-action'); clear_btn.connect('clicked',lambda *_:s.clear_notified()); menubar.append(clear_btn); root.append(menubar)
+  bar=Gtk.Box(spacing=8); root.append(bar); s.search=Gtk.SearchEntry(placeholder_text='Buscar título'); s.status=Gtk.DropDown.new_from_strings(['Todos']+STATUSES); s.typ=Gtk.DropDown.new_from_strings(['Todos']+TYPES); s.req=Gtk.DropDown.new_from_strings(['Todos']+s.store.requesters()); s.priority=Gtk.DropDown.new_from_strings(['Todos']+PRIORITIES); s.date=Gtk.SearchEntry(placeholder_text='AAAA-MM-DD'); add=Gtk.Button(label='Nueva petición'); add.add_css_class('new-action'); add.connect('clicked',lambda *_:s.new()); bar.append(s.search); bar.append(Gtk.Label(label='Estado:')); bar.append(s.status); bar.append(Gtk.Label(label='Tipo:')); bar.append(s.typ); bar.append(Gtk.Label(label='Peticionario:')); bar.append(s.req); bar.append(Gtk.Label(label='Prioridad:')); bar.append(s.priority); bar.append(Gtk.Label(label='Fecha:')); bar.append(s.date); bar.append(add); s.search.connect('search-changed',lambda *_:s.refresh()); s.date.connect('search-changed',lambda *_:s.refresh()); [x.connect('notify::selected-item',lambda *_:s.refresh()) for x in [s.status,s.typ,s.req,s.priority]]; s.list=Gtk.ListBox(); s.list.set_activate_on_single_click(False); s.list.connect('row-activated',lambda _,row:s.open(row.data)); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(s.list); root.append(scroll); s.count_label=Gtk.Label(xalign=1,halign=Gtk.Align.END); s.count_label.add_css_class('dim-label'); s.count_label.set_margin_top(2); root.append(s.count_label); s.refresh(); s.add_actions()
   s.win.set_default_size(1100,700); s.win.set_decorated(True); s.win.set_resizable(True)
   try:
    cfg=json.loads(CONFIG.read_text())
@@ -109,9 +123,10 @@ class App(Gtk.Application):
   for name,fn in [('settings',s.settings),('requesters',s.requesters),('about',s.about),('light',lambda:s.theme(False)),('dark',lambda:s.theme(True)),('backup',s.backup_now),('restore',s.restore_backup)]: a=Gio.SimpleAction.new(name,None); a.connect('activate',lambda _,__,f=fn:f()); s.add_action(a)
  def refresh(s):
   while (r:=s.list.get_row_at_index(0)): s.list.remove(r)
-  for r in s.store.rows(s.search.get_text(),s.status.get_selected_item().get_string(),s.typ.get_selected_item().get_string(),s.req.get_selected_item().get_string(),s.priority.get_selected_item().get_string(),s.date.get_text()):
-   row=Gtk.ListBoxRow(); row.data=r; box=Gtk.Box(spacing=12); box.set_margin_top(6); box.set_margin_bottom(6); box.set_margin_start(4); box.set_margin_end(4)
-   image=Gtk.Image(); image.set_pixel_size(64); image.set_from_file(r['poster_path']) if r['poster_path'] and Path(r['poster_path']).exists() else None; box.append(image)
+  rows=s.store.rows(s.search.get_text(),s.status.get_selected_item().get_string(),s.typ.get_selected_item().get_string(),s.req.get_selected_item().get_string(),s.priority.get_selected_item().get_string(),s.date.get_text())
+  for r in rows:
+   row=Gtk.ListBoxRow(); row.data=r; row_cls={'Notificado':'status-notificado','Buscando':'status-buscando'}.get(r['status']); row.add_css_class(row_cls) if row_cls else None; box=Gtk.Box(spacing=12); box.set_margin_top(6); box.set_margin_bottom(6); box.set_margin_start(4); box.set_margin_end(4)
+   image=Gtk.Image(); image.set_pixel_size(s.poster_size); image.set_from_file(r['poster_path']) if r['poster_path'] and Path(r['poster_path']).exists() else None; box.append(image)
    method=next((x for x in METHODS if plain(x)==r['download_method']),r['download_method'] or 'Sin método'); status=next((x for x in STATUSES if plain(x)==r['status']),r['status']); media=next((x for x in TYPES if plain(x)==r['media_type']),r['media_type']); priority=next((x for x in PRIORITIES if plain(x)==r['priority']),'🟡 Normal')
    content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=2,hexpand=True,valign=Gtk.Align.CENTER); box.append(content)
    title_line=Gtk.Box(spacing=6); content.append(title_line); title=Gtk.Label(xalign=0,ellipsize=Pango.EllipsizeMode.END); title.set_markup(f"<b>{GLib.markup_escape_text(r['title'])}</b>"); title_line.append(title)
@@ -122,6 +137,7 @@ class App(Gtk.Application):
    prio=Gtk.Label(); prio.set_markup(f"<b>{plain(priority)}</b>"); prio.add_css_class({'Alta':'priority-alta','Normal':'priority-normal','Baja':'priority-baja'}.get(plain(priority),'dim-label')); badges.append(prio)
    stat=Gtk.Label(label=status); stat.add_css_class('dim-label'); stat.add_css_class('caption'); badges.append(stat)
    row.set_child(box); s.list.append(row)
+  s.count_label.set_text('1 petición' if len(rows)==1 else f'{len(rows)} peticiones')
  def new(s):
   d=Editor(s.win,s.store); d.connect('response',lambda *_:s.refresh()); d.present()
  def open(s,r):
@@ -167,6 +183,13 @@ class App(Gtk.Application):
    if not selected: return
    confirm=Gtk.MessageDialog(transient_for=d,text=f'¿Restaurar «{backups[selected.get_index()].name}»?\n\nSe sobrescribirán los datos actuales (se guarda antes una copia de seguridad del estado actual). La aplicación se cerrará para aplicar los cambios.',buttons=Gtk.ButtonsType.YES_NO); confirm.connect('response',confirmed); confirm.present()
   restore.connect('clicked',do_restore); d.present()
+ def clear_notified(s):
+  count=s.store.notified_count()
+  if count==0:
+   info=Gtk.MessageDialog(transient_for=s.win,text='No hay peticiones en estado Notificado.',buttons=Gtk.ButtonsType.OK); info.connect('response',lambda dialog,_:dialog.close()); info.present(); return
+  word='petición notificada' if count==1 else 'peticiones notificadas'; confirm=Gtk.MessageDialog(transient_for=s.win,text=f'¿Eliminar {count} {word}?',buttons=Gtk.ButtonsType.NONE)
+  confirm.add_button('Cancelar',Gtk.ResponseType.CANCEL); confirm.add_button('Aceptar',Gtk.ResponseType.OK); confirm.get_widget_for_response(Gtk.ResponseType.OK).add_css_class('save-action')
+  confirm.connect('response',lambda dialog,response:(s.store.clear_notified(),dialog.close(),s.refresh()) if response==Gtk.ResponseType.OK else dialog.close()); confirm.present()
  def about(s):
   d=Gtk.Dialog(title='Acerca de Joseflix Request',transient_for=s.win,modal=True); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); box.set_margin_start(28); box.set_margin_end(28); box.set_margin_top(24); box.set_margin_bottom(24); d.set_child(box); icon=Gtk.Image(); icon_path='/usr/share/icons/hicolor/scalable/apps/joseflix-request.svg'; icon.set_from_file(icon_path if Path(icon_path).exists() else str(Path(__file__).with_name('joseflix-request.svg'))); icon.set_pixel_size(96); box.append(icon); info=Gtk.Label(); info.set_markup(f'<big><b>Joseflix Request</b></big>\n\nVersión {APP_VERSION}\nGestor de peticiones para Joseflix\n\nDesarrollador:\nseguidodoblado\njose.antonio.seguido@gmail.com\n\nDependencia:\nPyGObject + GTK 4'); info.set_justify(Gtk.Justification.CENTER); box.append(info); close=Gtk.Button(label='Cerrar'); close.set_halign(Gtk.Align.CENTER); close.connect('clicked',lambda *_:d.close()); box.append(close); d.present()
  def theme(s,dark):
@@ -176,4 +199,9 @@ class App(Gtk.Application):
     except (FileNotFoundError, json.JSONDecodeError): pass
     cfg['dark_theme'] = dark
     CONFIG.write_text(json.dumps(cfg))
+ def set_poster_size(s,px):
+  s.poster_size=px; cfg={}
+  try: cfg=json.loads(CONFIG.read_text())
+  except (FileNotFoundError, json.JSONDecodeError): pass
+  cfg['poster_size']=px; CONFIG.write_text(json.dumps(cfg)); s.refresh()
 App().run()
