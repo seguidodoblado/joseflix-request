@@ -33,12 +33,13 @@ class Store:
    try: s.db.execute(f'ALTER TABLE requests ADD COLUMN {col}')
    except sqlite3.OperationalError: pass
   s.db.execute('CREATE TABLE IF NOT EXISTS requesters (name TEXT PRIMARY KEY)'); s.db.execute('INSERT OR IGNORE INTO requesters SELECT DISTINCT requester FROM requests WHERE requester!=""'); s.db.commit()
- def rows(s,text='',status='Todos',typ='Todos',requester='Todos',priority='Todos',date=''):
+ def rows(s,text='',status='Todos',typ='Todos',requester='Todos',priority='Todos',date='',desc=False):
   q='SELECT * FROM requests WHERE title LIKE ?'; a=[f'%{text}%']
   for v,c in [(plain(status),'status'),(plain(typ),'media_type'),(requester,'requester'),(plain(priority),'priority')]:
    if v!='Todos': q+=f' AND {c}=?'; a.append(v)
   if date: q+=' AND request_date LIKE ?'; a.append(f'%{date}%')
-  return s.db.execute(q+' ORDER BY (request_date IS NULL), request_date ASC, id ASC',a).fetchall()
+  order='DESC' if desc else 'ASC'
+  return s.db.execute(q+f' ORDER BY (request_date IS NULL), request_date {order}, id {order}',a).fetchall()
  def requesters(s): return [x[0] for x in s.db.execute('SELECT name FROM requesters ORDER BY name')]
  def save(s,d,ident=None):
   if ident: s.db.execute('UPDATE requests SET '+','.join(f'{k}=?' for k in d)+' WHERE id=?',[*d.values(),ident])
@@ -111,8 +112,10 @@ class App(Gtk.Application):
   css=Gtk.CssProvider(); css.load_from_string('label.priority-alta{color:#e01b24;} label.priority-normal{color:#e5a50a;} label.priority-baja{color:#26a269;} button.save-action{background-image:none;background-color:#26a269;color:#fff;} row.status-notificado{background-color:rgba(38,162,105,0.18);} row.status-buscando{background-color:rgba(224,27,36,0.18);} button.new-action{background-image:none;background-color:#3584e4;color:#fff;}'); Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
   try: s.poster_size=json.loads(CONFIG.read_text()).get('poster_size',96)
   except (FileNotFoundError, json.JSONDecodeError): s.poster_size=96
+  try: s.sort_desc=json.loads(CONFIG.read_text()).get('sort_desc',False)
+  except (FileNotFoundError, json.JSONDecodeError): s.sort_desc=False
   s.win=Gtk.ApplicationWindow(application=s,title='Joseflix — Peticiones',default_width=1100,default_height=700); root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); root.set_margin_start(12); root.set_margin_end(12); root.set_margin_top(8); root.set_margin_bottom(8); s.win.set_child(root); menubar=Gtk.Box(spacing=8); ajustes=Gtk.MenuButton(); ver=Gtk.MenuButton(); ayuda=Gtk.MenuButton(); [(b.set_child(c),menubar.append(b)) for b,c in [(ajustes,Gtk.Box(spacing=6)),(ver,Gtk.Box(spacing=6)),(ayuda,Gtk.Box(spacing=6))]]; ajustes.get_child().append(Gtk.Image.new_from_icon_name('preferences-system')); ajustes.get_child().append(Gtk.Label(label='Ajustes')); ver.get_child().append(Gtk.Image.new_from_icon_name('preferences-desktop-theme')); ver.get_child().append(Gtk.Label(label='Tema')); ayuda.get_child().append(Gtk.Image.new_from_icon_name('help-browser')); ayuda.get_child().append(Gtk.Label(label='Ayuda')); s.menu_popover(ajustes,[('Configurar TMDB…','system-lock-screen',s.settings),('Gestionar peticionarios…','system-users',s.requesters),('Copia de seguridad ahora','document-save',s.backup_now),('Restaurar copia de seguridad…','document-revert',s.restore_backup)]); s.view_menu(ver); s.menu_popover(ayuda,[('Acerca de','help-about',s.about)]); spacer=Gtk.Box(hexpand=True); menubar.append(spacer); clear_btn=Gtk.Button(label='Limpiar notificados'); clear_btn.add_css_class('save-action'); clear_btn.connect('clicked',lambda *_:s.clear_notified()); menubar.append(clear_btn); root.append(menubar)
-  bar=Gtk.Box(spacing=8); root.append(bar); s.search=Gtk.SearchEntry(placeholder_text='Buscar título'); s.status=Gtk.DropDown.new_from_strings(['Todos']+STATUSES); s.typ=Gtk.DropDown.new_from_strings(['Todos']+TYPES); s.req=Gtk.DropDown.new_from_strings(['Todos']+s.store.requesters()); s.priority=Gtk.DropDown.new_from_strings(['Todos']+PRIORITIES); s.date=Gtk.SearchEntry(placeholder_text='AAAA-MM-DD'); add=Gtk.Button(label='Nueva petición'); add.add_css_class('new-action'); add.connect('clicked',lambda *_:s.new()); bar.append(s.search); bar.append(Gtk.Label(label='Estado:')); bar.append(s.status); bar.append(Gtk.Label(label='Tipo:')); bar.append(s.typ); bar.append(Gtk.Label(label='Peticionario:')); bar.append(s.req); bar.append(Gtk.Label(label='Prioridad:')); bar.append(s.priority); bar.append(Gtk.Label(label='Fecha:')); bar.append(s.date); bar.append(add); s.search.connect('search-changed',lambda *_:s.refresh()); s.date.connect('search-changed',lambda *_:s.refresh()); [x.connect('notify::selected-item',lambda *_:s.refresh()) for x in [s.status,s.typ,s.req,s.priority]]; s.list=Gtk.ListBox(); s.list.set_activate_on_single_click(False); s.list.connect('row-activated',lambda _,row:s.open(row.data)); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(s.list); root.append(scroll); s.count_label=Gtk.Label(xalign=1,halign=Gtk.Align.END); s.count_label.add_css_class('dim-label'); s.count_label.set_margin_top(2); root.append(s.count_label); s.refresh(); s.add_actions()
+  bar=Gtk.Box(spacing=8); root.append(bar); s.search=Gtk.SearchEntry(placeholder_text='Buscar título'); s.status=Gtk.DropDown.new_from_strings(['Todos']+STATUSES); s.typ=Gtk.DropDown.new_from_strings(['Todos']+TYPES); s.req=Gtk.DropDown.new_from_strings(['Todos']+s.store.requesters()); s.priority=Gtk.DropDown.new_from_strings(['Todos']+PRIORITIES); s.date=Gtk.SearchEntry(placeholder_text='AAAA-MM-DD'); add=Gtk.Button(label='Nueva petición'); add.add_css_class('new-action'); add.connect('clicked',lambda *_:s.new()); bar.append(s.search); bar.append(Gtk.Label(label='Estado:')); bar.append(s.status); bar.append(Gtk.Label(label='Tipo:')); bar.append(s.typ); bar.append(Gtk.Label(label='Peticionario:')); bar.append(s.req); bar.append(Gtk.Label(label='Prioridad:')); bar.append(s.priority); bar.append(Gtk.Label(label='Fecha:')); bar.append(s.date); s.sort_btn=Gtk.Button(); s.sort_btn.connect('clicked',lambda *_:s.toggle_sort()); bar.append(s.sort_btn); s.update_sort_icon(); bar.append(add); s.search.connect('search-changed',lambda *_:s.refresh()); s.date.connect('search-changed',lambda *_:s.refresh()); [x.connect('notify::selected-item',lambda *_:s.refresh()) for x in [s.status,s.typ,s.req,s.priority]]; s.list=Gtk.ListBox(); s.list.set_activate_on_single_click(False); s.list.connect('row-activated',lambda _,row:s.open(row.data)); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(s.list); root.append(scroll); s.count_label=Gtk.Label(xalign=1,halign=Gtk.Align.END); s.count_label.add_css_class('dim-label'); s.count_label.set_margin_top(2); root.append(s.count_label); s.refresh(); s.add_actions()
   s.win.set_default_size(1100,700); s.win.set_decorated(True); s.win.set_resizable(True)
   try:
    cfg=json.loads(CONFIG.read_text())
@@ -123,7 +126,7 @@ class App(Gtk.Application):
   for name,fn in [('settings',s.settings),('requesters',s.requesters),('about',s.about),('light',lambda:s.theme(False)),('dark',lambda:s.theme(True)),('backup',s.backup_now),('restore',s.restore_backup)]: a=Gio.SimpleAction.new(name,None); a.connect('activate',lambda _,__,f=fn:f()); s.add_action(a)
  def refresh(s):
   while (r:=s.list.get_row_at_index(0)): s.list.remove(r)
-  rows=s.store.rows(s.search.get_text(),s.status.get_selected_item().get_string(),s.typ.get_selected_item().get_string(),s.req.get_selected_item().get_string(),s.priority.get_selected_item().get_string(),s.date.get_text())
+  rows=s.store.rows(s.search.get_text(),s.status.get_selected_item().get_string(),s.typ.get_selected_item().get_string(),s.req.get_selected_item().get_string(),s.priority.get_selected_item().get_string(),s.date.get_text(),s.sort_desc)
   for r in rows:
    row=Gtk.ListBoxRow(); row.data=r; row_cls={'Notificado':'status-notificado','Buscando':'status-buscando'}.get(r['status']); row.add_css_class(row_cls) if row_cls else None; box=Gtk.Box(spacing=12); box.set_margin_top(6); box.set_margin_bottom(6); box.set_margin_start(4); box.set_margin_end(4)
    image=Gtk.Image(); image.set_pixel_size(s.poster_size); image.set_from_file(r['poster_path']) if r['poster_path'] and Path(r['poster_path']).exists() else None; box.append(image)
@@ -204,4 +207,12 @@ class App(Gtk.Application):
   try: cfg=json.loads(CONFIG.read_text())
   except (FileNotFoundError, json.JSONDecodeError): pass
   cfg['poster_size']=px; CONFIG.write_text(json.dumps(cfg)); s.refresh()
+ def update_sort_icon(s):
+  s.sort_btn.set_icon_name('view-sort-descending-symbolic' if s.sort_desc else 'view-sort-ascending-symbolic')
+  s.sort_btn.set_tooltip_text('Más recientes primero' if s.sort_desc else 'Más antiguas primero')
+ def toggle_sort(s):
+  s.sort_desc=not s.sort_desc; cfg={}
+  try: cfg=json.loads(CONFIG.read_text())
+  except (FileNotFoundError, json.JSONDecodeError): pass
+  cfg['sort_desc']=s.sort_desc; CONFIG.write_text(json.dumps(cfg)); s.update_sort_icon(); s.refresh()
 App().run()
