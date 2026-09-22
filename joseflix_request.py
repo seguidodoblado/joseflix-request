@@ -109,7 +109,7 @@ class App(Gtk.Application):
   scale.connect('value-changed',lambda sc:s.set_poster_size(int(sc.get_value()))); box.append(scale)
   pop.set_child(box); button.set_popover(pop)
  def do_activate(s):
-  css=Gtk.CssProvider(); css.load_from_string('label.priority-alta{color:#e01b24;} label.priority-normal{color:#e5a50a;} label.priority-baja{color:#26a269;} button.save-action{background-image:none;background-color:#26a269;color:#fff;} row.status-notificado{background-color:rgba(38,162,105,0.18);} row.status-buscando{background-color:rgba(224,27,36,0.18);} button.new-action{background-image:none;background-color:#3584e4;color:#fff;}'); Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+  css=Gtk.CssProvider(); css.load_from_string('label.priority-alta{color:#e01b24;} label.priority-normal{color:#e5a50a;} label.priority-baja{color:#26a269;} button.save-action{background-image:none;background-color:#26a269;color:#fff;} row.status-notificado:not(:selected){background-color:rgba(38,162,105,0.18);} row.status-buscando:not(:selected){background-color:rgba(224,27,36,0.18);} button.new-action{background-image:none;background-color:#3584e4;color:#fff;}'); Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
   try: s.poster_size=json.loads(CONFIG.read_text()).get('poster_size',96)
   except (FileNotFoundError, json.JSONDecodeError): s.poster_size=96
   try: s.sort_desc=json.loads(CONFIG.read_text()).get('sort_desc',False)
@@ -196,7 +196,7 @@ class App(Gtk.Application):
  def about(s):
   d=Gtk.Dialog(title='Acerca de Joseflix Request',transient_for=s.win,modal=True); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); box.set_margin_start(28); box.set_margin_end(28); box.set_margin_top(24); box.set_margin_bottom(24); d.set_child(box); icon=Gtk.Image(); icon_path='/usr/share/icons/hicolor/scalable/apps/joseflix-request.svg'; icon.set_from_file(icon_path if Path(icon_path).exists() else str(Path(__file__).with_name('joseflix-request.svg'))); icon.set_pixel_size(96); box.append(icon); info=Gtk.Label(); info.set_markup(f'<big><b>Joseflix Request</b></big>\n\nVersión {APP_VERSION}\nGestor de peticiones para Joseflix\n\nDesarrollador:\nseguidodoblado\njose.antonio.seguido@gmail.com\n\nDependencia:\nPyGObject + GTK 4'); info.set_justify(Gtk.Justification.CENTER); box.append(info); close=Gtk.Button(label='Cerrar'); close.set_halign(Gtk.Align.CENTER); close.connect('clicked',lambda *_:d.close()); box.append(close); d.present()
  def theme(s,dark):
-    settings=Gtk.Settings.get_default(); settings.set_property('gtk-theme-name','Adwaita-dark' if dark else 'Adwaita'); settings.set_property('gtk-application-prefer-dark-theme',dark)
+    settings=Gtk.Settings.get_default(); settings.set_property('gtk-application-prefer-dark-theme',dark)
     cfg = {}
     try: cfg = json.loads(CONFIG.read_text())
     except (FileNotFoundError, json.JSONDecodeError): pass
