@@ -2,6 +2,8 @@
 
 Aplicación de escritorio para gestionar las peticiones de películas y series del servidor Plex Joseflix.
 
+Última release: [v1.0.0-2ubuntu11](https://github.com/seguidodoblado/joseflix-request/releases/tag/v1.0.0-2ubuntu11)
+
 ## Características
 
 - Consulta mediante URL de TMDB y descarga del póster.
