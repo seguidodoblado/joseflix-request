@@ -1,3 +1,12 @@
+joseflix-request (1.0.0-2ubuntu14) noble; urgency=medium
+
+  * Light/dark theme toggle now restarts the app to actually apply the
+    change (GTK4 ignores gtk-theme-name changes after the window is
+    shown), deriving the matching variant of the system theme so the
+    accent color is preserved.
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Tue, 22 Sep 2026 14:15:52 +0200
+
 joseflix-request (1.0.0-2ubuntu13) noble; urgency=medium
 
   * Rows with status Notified/Searching no longer cover the selection
