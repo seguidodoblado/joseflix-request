@@ -1,3 +1,12 @@
+joseflix-request (1.0.0-2ubuntu13) noble; urgency=medium
+
+  * Rows with status Notified/Searching no longer cover the selection
+    highlight (single click should show the accent again).  The theme
+    toggle no longer forces Adwaita; now just order the light/dark
+    variant, respecting Cinnamon's theme (and its orange accent).
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Tue, 22 Sep 2026 13:49:58 +0200
+
 joseflix-request (1.0.0-2ubuntu12) noble; urgency=medium
 
   * Add button to change request date order

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, re, shutil, sqlite3, urllib.parse, urllib.request
+import json, os, re, shutil, sqlite3, sys, urllib.parse, urllib.request
 from datetime import datetime
 from pathlib import Path
 import gi
@@ -26,6 +26,12 @@ def make_backup():
  return dest
 def list_backups(): return sorted(BACKUPS_DIR.glob('joseflix-*.sqlite3'),reverse=True)
 def plain(x): return x.split(' ',1)[-1]
+def theme_variant(name,dark):
+ base=re.sub(r'-Dark(?=-|$)','',name,count=1)
+ if not dark: return base
+ if base=='Adwaita': return 'Adwaita-dark'
+ parts=base.split('-',2)
+ return f'{parts[0]}-{parts[1]}-Dark'+(f'-{parts[2]}' if len(parts)>2 else '') if len(parts)>=2 else base+'-Dark'
 class Store:
  def __init__(s):
   make_backup(); s.db=sqlite3.connect(DB); s.db.row_factory=sqlite3.Row; s.db.execute('CREATE TABLE IF NOT EXISTS requests (id INTEGER PRIMARY KEY,tmdb_id INTEGER,media_type TEXT,title TEXT,year TEXT,overview TEXT,poster_path TEXT,tmdb_url TEXT,requester TEXT,status TEXT,download_method TEXT,download_url TEXT,notes TEXT,priority TEXT,request_date TEXT)')
@@ -109,6 +115,7 @@ class App(Gtk.Application):
   scale.connect('value-changed',lambda sc:s.set_poster_size(int(sc.get_value()))); box.append(scale)
   pop.set_child(box); button.set_popover(pop)
  def do_activate(s):
+  s.system_theme=Gtk.Settings.get_default().get_property('gtk-theme-name'); s.presented=False
   css=Gtk.CssProvider(); css.load_from_string('label.priority-alta{color:#e01b24;} label.priority-normal{color:#e5a50a;} label.priority-baja{color:#26a269;} button.save-action{background-image:none;background-color:#26a269;color:#fff;} row.status-notificado:not(:selected){background-color:rgba(38,162,105,0.18);} row.status-buscando:not(:selected){background-color:rgba(224,27,36,0.18);} button.new-action{background-image:none;background-color:#3584e4;color:#fff;}'); Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
   try: s.poster_size=json.loads(CONFIG.read_text()).get('poster_size',96)
   except (FileNotFoundError, json.JSONDecodeError): s.poster_size=96
@@ -121,7 +128,7 @@ class App(Gtk.Application):
    cfg=json.loads(CONFIG.read_text())
    if 'dark_theme' in cfg: s.theme(cfg['dark_theme'])
   except (FileNotFoundError, json.JSONDecodeError): pass
-  s.win.present()
+  s.win.present(); s.presented=True
  def add_actions(s):
   for name,fn in [('settings',s.settings),('requesters',s.requesters),('about',s.about),('light',lambda:s.theme(False)),('dark',lambda:s.theme(True)),('backup',s.backup_now),('restore',s.restore_backup)]: a=Gio.SimpleAction.new(name,None); a.connect('activate',lambda _,__,f=fn:f()); s.add_action(a)
  def refresh(s):
@@ -196,12 +203,13 @@ class App(Gtk.Application):
  def about(s):
   d=Gtk.Dialog(title='Acerca de Joseflix Request',transient_for=s.win,modal=True); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); box.set_margin_start(28); box.set_margin_end(28); box.set_margin_top(24); box.set_margin_bottom(24); d.set_child(box); icon=Gtk.Image(); icon_path='/usr/share/icons/hicolor/scalable/apps/joseflix-request.svg'; icon.set_from_file(icon_path if Path(icon_path).exists() else str(Path(__file__).with_name('joseflix-request.svg'))); icon.set_pixel_size(96); box.append(icon); info=Gtk.Label(); info.set_markup(f'<big><b>Joseflix Request</b></big>\n\nVersión {APP_VERSION}\nGestor de peticiones para Joseflix\n\nDesarrollador:\nseguidodoblado\njose.antonio.seguido@gmail.com\n\nDependencia:\nPyGObject + GTK 4'); info.set_justify(Gtk.Justification.CENTER); box.append(info); close=Gtk.Button(label='Cerrar'); close.set_halign(Gtk.Align.CENTER); close.connect('clicked',lambda *_:d.close()); box.append(close); d.present()
  def theme(s,dark):
-    settings=Gtk.Settings.get_default(); settings.set_property('gtk-application-prefer-dark-theme',dark)
+    Gtk.Settings.get_default().set_property('gtk-theme-name',theme_variant(s.system_theme,dark))
     cfg = {}
     try: cfg = json.loads(CONFIG.read_text())
     except (FileNotFoundError, json.JSONDecodeError): pass
     cfg['dark_theme'] = dark
     CONFIG.write_text(json.dumps(cfg))
+    if s.presented: s.store.db.commit(); os.execvpe(sys.executable,[sys.executable,os.path.abspath(__file__)],os.environ)
  def set_poster_size(s,px):
   s.poster_size=px; cfg={}
   try: cfg=json.loads(CONFIG.read_text())
