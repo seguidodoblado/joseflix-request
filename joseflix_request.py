@@ -110,12 +110,12 @@ class App(Gtk.Application):
   for label,icon,callback in [('Modo claro','weather-clear',lambda:s.theme(False)),('Modo oscuro','weather-clear-night',lambda:s.theme(True))]:
    b=Gtk.Button(); content=Gtk.Box(spacing=8); content.append(Gtk.Image.new_from_icon_name(icon)); content.append(Gtk.Label(label=label,xalign=0)); b.set_child(content); b.set_halign(Gtk.Align.FILL); b.connect('clicked',lambda _,fn=callback:(pop.popdown(),fn())); box.append(b)
   box.append(Gtk.Separator()); box.append(Gtk.Label(label='Tamaño de póster',xalign=0))
-  scale=Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL,adjustment=Gtk.Adjustment(value=s.poster_size,lower=64,upper=160,step_increment=8,page_increment=16)); scale.set_digits(0); scale.set_draw_value(True); scale.set_size_request(140,-1); scale.set_hexpand(False)
-  for v in (64,96,120,160): scale.add_mark(v,Gtk.PositionType.BOTTOM,None)
+  scale=Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL,adjustment=Gtk.Adjustment(value=s.poster_size,lower=64,upper=240,step_increment=8,page_increment=16)); scale.set_digits(0); scale.set_draw_value(True); scale.set_size_request(140,-1); scale.set_hexpand(False)
+  for v in (64,96,120,160,200,240): scale.add_mark(v,Gtk.PositionType.BOTTOM,None)
   scale.connect('value-changed',lambda sc:s.set_poster_size(int(sc.get_value()))); box.append(scale)
   pop.set_child(box); button.set_popover(pop)
  def do_activate(s):
-  s.system_theme=Gtk.Settings.get_default().get_property('gtk-theme-name'); s.presented=False
+  s.system_theme=Gtk.Settings.get_default().get_property('gtk-theme-name'); s.presented=False; s.poster_refresh_src=None
   css=Gtk.CssProvider(); css.load_from_string('label.priority-alta{color:#e01b24;} label.priority-normal{color:#e5a50a;} label.priority-baja{color:#26a269;} button.save-action{background-image:none;background-color:#26a269;color:#fff;} row.status-notificado:not(:selected){background-color:rgba(38,162,105,0.18);} row.status-buscando:not(:selected){background-color:rgba(224,27,36,0.18);} button.new-action{background-image:none;background-color:#3584e4;color:#fff;}'); Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
   try: s.poster_size=json.loads(CONFIG.read_text()).get('poster_size',96)
   except (FileNotFoundError, json.JSONDecodeError): s.poster_size=96
@@ -214,7 +214,11 @@ class App(Gtk.Application):
   s.poster_size=px; cfg={}
   try: cfg=json.loads(CONFIG.read_text())
   except (FileNotFoundError, json.JSONDecodeError): pass
-  cfg['poster_size']=px; CONFIG.write_text(json.dumps(cfg)); s.refresh()
+  cfg['poster_size']=px; CONFIG.write_text(json.dumps(cfg))
+  if s.poster_refresh_src: GLib.source_remove(s.poster_refresh_src)
+  def do_refresh():
+   s.poster_refresh_src=None; s.refresh(); return False
+  s.poster_refresh_src=GLib.timeout_add(150,do_refresh)
  def update_sort_icon(s):
   s.sort_btn.set_icon_name('view-sort-descending-symbolic' if s.sort_desc else 'view-sort-ascending-symbolic')
   s.sort_btn.set_tooltip_text('Más recientes primero' if s.sort_desc else 'Más antiguas primero')

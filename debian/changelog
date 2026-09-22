@@ -1,3 +1,11 @@
+joseflix-request (1.0.1-1) noble; urgency=medium
+
+  * Wider poster size range (up to 240px) and debounced list rebuild
+    while dragging the slider, fixing a GTK drag-cancel glitch that
+    reset the slider when it triggered mid-drag.
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Tue, 22 Sep 2026 14:40:08 +0200
+
 joseflix-request (1.0.0-2ubuntu14) noble; urgency=medium
 
   * Light/dark theme toggle now restarts the app to actually apply the
