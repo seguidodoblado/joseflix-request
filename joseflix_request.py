@@ -32,6 +32,13 @@ def theme_variant(name,dark):
  if base=='Adwaita': return 'Adwaita-dark'
  parts=base.split('-',2)
  return f'{parts[0]}-{parts[1]}-Dark'+(f'-{parts[2]}' if len(parts)>2 else '') if len(parts)>=2 else base+'-Dark'
+def is_dark_theme(name): return bool(name and '-dark' in name.lower())
+SYMBOLIC_ALTERNATIVES={'preferences-desktop-theme':'preferences-desktop-appearance'}
+def icon_variant(name,dark,has_icon):
+ if dark:
+  for base in (name,SYMBOLIC_ALTERNATIVES.get(name)):
+   if base and has_icon(base+'-symbolic'): return base+'-symbolic'
+ return name
 class Store:
  def __init__(s):
   make_backup(); s.db=sqlite3.connect(DB); s.db.row_factory=sqlite3.Row; s.db.execute('CREATE TABLE IF NOT EXISTS requests (id INTEGER PRIMARY KEY,tmdb_id INTEGER,media_type TEXT,title TEXT,year TEXT,overview TEXT,poster_path TEXT,tmdb_url TEXT,requester TEXT,status TEXT,download_method TEXT,download_url TEXT,notes TEXT,priority TEXT,request_date TEXT)')
@@ -100,15 +107,16 @@ class Editor(Gtk.Dialog):
   s.close()
 class App(Gtk.Application):
  def __init__(s): super().__init__(application_id='es.joseflix.Request'); s.store=Store()
+ def icon(s,name): return Gtk.Image.new_from_icon_name(icon_variant(name,s.dark,Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon))
  def menu_popover(s,button,items):
   pop=Gtk.Popover(); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=2); box.set_margin_start(6); box.set_margin_end(6); box.set_margin_top(6); box.set_margin_bottom(6)
   for label,icon,callback in items:
-   b=Gtk.Button(); content=Gtk.Box(spacing=8); content.append(Gtk.Image.new_from_icon_name(icon)); content.append(Gtk.Label(label=label,xalign=0)); b.set_child(content); b.set_halign(Gtk.Align.FILL); b.connect('clicked',lambda _,fn=callback:(pop.popdown(),fn())); box.append(b)
+   b=Gtk.Button(); content=Gtk.Box(spacing=8); content.append(s.icon(icon)); content.append(Gtk.Label(label=label,xalign=0)); b.set_child(content); b.set_halign(Gtk.Align.FILL); b.connect('clicked',lambda _,fn=callback:(pop.popdown(),fn())); box.append(b)
   pop.set_child(box); button.set_popover(pop)
  def view_menu(s,button):
   pop=Gtk.Popover(); box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6); box.set_margin_start(10); box.set_margin_end(10); box.set_margin_top(8); box.set_margin_bottom(8)
   for label,icon,callback in [('Modo claro','weather-clear',lambda:s.theme(False)),('Modo oscuro','weather-clear-night',lambda:s.theme(True))]:
-   b=Gtk.Button(); content=Gtk.Box(spacing=8); content.append(Gtk.Image.new_from_icon_name(icon)); content.append(Gtk.Label(label=label,xalign=0)); b.set_child(content); b.set_halign(Gtk.Align.FILL); b.connect('clicked',lambda _,fn=callback:(pop.popdown(),fn())); box.append(b)
+   b=Gtk.Button(); content=Gtk.Box(spacing=8); content.append(s.icon(icon)); content.append(Gtk.Label(label=label,xalign=0)); b.set_child(content); b.set_halign(Gtk.Align.FILL); b.connect('clicked',lambda _,fn=callback:(pop.popdown(),fn())); box.append(b)
   box.append(Gtk.Separator()); box.append(Gtk.Label(label='Tamaño de póster',xalign=0))
   scale=Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL,adjustment=Gtk.Adjustment(value=s.poster_size,lower=64,upper=240,step_increment=8,page_increment=16)); scale.set_digits(0); scale.set_draw_value(True); scale.set_size_request(140,-1); scale.set_hexpand(False)
   for v in (64,96,120,160,200,240): scale.add_mark(v,Gtk.PositionType.BOTTOM,None)
@@ -116,12 +124,15 @@ class App(Gtk.Application):
   pop.set_child(box); button.set_popover(pop)
  def do_activate(s):
   s.system_theme=Gtk.Settings.get_default().get_property('gtk-theme-name'); s.presented=False; s.poster_refresh_src=None
+  try: saved=json.loads(CONFIG.read_text()).get('dark_theme')
+  except (FileNotFoundError, json.JSONDecodeError): saved=None
+  s.dark=bool(saved) if saved is not None else is_dark_theme(s.system_theme)
   css=Gtk.CssProvider(); css.load_from_string('label.priority-alta{color:#e01b24;} label.priority-normal{color:#e5a50a;} label.priority-baja{color:#26a269;} button.save-action{background-image:none;background-color:#26a269;color:#fff;} row.status-notificado:not(:selected){background-color:rgba(38,162,105,0.18);} row.status-buscando:not(:selected){background-color:rgba(224,27,36,0.18);} button.new-action{background-image:none;background-color:#3584e4;color:#fff;}'); Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
   try: s.poster_size=json.loads(CONFIG.read_text()).get('poster_size',96)
   except (FileNotFoundError, json.JSONDecodeError): s.poster_size=96
   try: s.sort_desc=json.loads(CONFIG.read_text()).get('sort_desc',False)
   except (FileNotFoundError, json.JSONDecodeError): s.sort_desc=False
-  s.win=Gtk.ApplicationWindow(application=s,title='Joseflix — Peticiones',default_width=1100,default_height=700); root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); root.set_margin_start(12); root.set_margin_end(12); root.set_margin_top(8); root.set_margin_bottom(8); s.win.set_child(root); menubar=Gtk.Box(spacing=8); ajustes=Gtk.MenuButton(); ver=Gtk.MenuButton(); ayuda=Gtk.MenuButton(); [(b.set_child(c),menubar.append(b)) for b,c in [(ajustes,Gtk.Box(spacing=6)),(ver,Gtk.Box(spacing=6)),(ayuda,Gtk.Box(spacing=6))]]; ajustes.get_child().append(Gtk.Image.new_from_icon_name('preferences-system')); ajustes.get_child().append(Gtk.Label(label='Ajustes')); ver.get_child().append(Gtk.Image.new_from_icon_name('preferences-desktop-theme')); ver.get_child().append(Gtk.Label(label='Tema')); ayuda.get_child().append(Gtk.Image.new_from_icon_name('help-browser')); ayuda.get_child().append(Gtk.Label(label='Ayuda')); s.menu_popover(ajustes,[('Configurar TMDB…','system-lock-screen',s.settings),('Gestionar peticionarios…','system-users',s.requesters),('Copia de seguridad ahora','document-save',s.backup_now),('Restaurar copia de seguridad…','document-revert',s.restore_backup)]); s.view_menu(ver); s.menu_popover(ayuda,[('Acerca de','help-about',s.about)]); spacer=Gtk.Box(hexpand=True); menubar.append(spacer); clear_btn=Gtk.Button(label='Limpiar notificados'); clear_btn.add_css_class('save-action'); clear_btn.connect('clicked',lambda *_:s.clear_notified()); menubar.append(clear_btn); root.append(menubar)
+  s.win=Gtk.ApplicationWindow(application=s,title='Joseflix — Peticiones',default_width=1100,default_height=700); root=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); root.set_margin_start(12); root.set_margin_end(12); root.set_margin_top(8); root.set_margin_bottom(8); s.win.set_child(root); menubar=Gtk.Box(spacing=8); ajustes=Gtk.MenuButton(); ver=Gtk.MenuButton(); ayuda=Gtk.MenuButton(); [(b.set_child(c),menubar.append(b)) for b,c in [(ajustes,Gtk.Box(spacing=6)),(ver,Gtk.Box(spacing=6)),(ayuda,Gtk.Box(spacing=6))]]; ajustes.get_child().append(s.icon('preferences-system')); ajustes.get_child().append(Gtk.Label(label='Ajustes')); ver.get_child().append(s.icon('preferences-desktop-theme')); ver.get_child().append(Gtk.Label(label='Tema')); ayuda.get_child().append(s.icon('help-browser')); ayuda.get_child().append(Gtk.Label(label='Ayuda')); s.menu_popover(ajustes,[('Configurar TMDB…','system-lock-screen',s.settings),('Gestionar peticionarios…','system-users',s.requesters),('Copia de seguridad ahora','document-save',s.backup_now),('Restaurar copia de seguridad…','document-revert',s.restore_backup)]); s.view_menu(ver); s.menu_popover(ayuda,[('Acerca de','help-about',s.about)]); spacer=Gtk.Box(hexpand=True); menubar.append(spacer); clear_btn=Gtk.Button(label='Limpiar notificados'); clear_btn.add_css_class('save-action'); clear_btn.connect('clicked',lambda *_:s.clear_notified()); menubar.append(clear_btn); root.append(menubar)
   bar=Gtk.Box(spacing=8); root.append(bar); s.search=Gtk.SearchEntry(placeholder_text='Buscar título'); s.status=Gtk.DropDown.new_from_strings(['Todos']+STATUSES); s.typ=Gtk.DropDown.new_from_strings(['Todos']+TYPES); s.req=Gtk.DropDown.new_from_strings(['Todos']+s.store.requesters()); s.priority=Gtk.DropDown.new_from_strings(['Todos']+PRIORITIES); s.date=Gtk.SearchEntry(placeholder_text='AAAA-MM-DD'); add=Gtk.Button(label='Nueva petición'); add.add_css_class('new-action'); add.connect('clicked',lambda *_:s.new()); bar.append(s.search); bar.append(Gtk.Label(label='Estado:')); bar.append(s.status); bar.append(Gtk.Label(label='Tipo:')); bar.append(s.typ); bar.append(Gtk.Label(label='Peticionario:')); bar.append(s.req); bar.append(Gtk.Label(label='Prioridad:')); bar.append(s.priority); bar.append(Gtk.Label(label='Fecha:')); bar.append(s.date); s.sort_btn=Gtk.Button(); s.sort_btn.connect('clicked',lambda *_:s.toggle_sort()); bar.append(s.sort_btn); s.update_sort_icon(); bar.append(add); s.search.connect('search-changed',lambda *_:s.refresh()); s.date.connect('search-changed',lambda *_:s.refresh()); [x.connect('notify::selected-item',lambda *_:s.refresh()) for x in [s.status,s.typ,s.req,s.priority]]; s.list=Gtk.ListBox(); s.list.set_activate_on_single_click(False); s.list.connect('row-activated',lambda _,row:s.open(row.data)); scroll=Gtk.ScrolledWindow(); scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC); scroll.set_vexpand(True); scroll.set_child(s.list); root.append(scroll); s.count_label=Gtk.Label(xalign=1,halign=Gtk.Align.END); s.count_label.add_css_class('dim-label'); s.count_label.set_margin_top(2); root.append(s.count_label); s.refresh(); s.add_actions()
   s.win.set_default_size(1100,700); s.win.set_decorated(True); s.win.set_resizable(True)
   try:

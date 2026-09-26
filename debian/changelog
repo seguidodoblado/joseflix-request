@@ -1,3 +1,10 @@
+joseflix-request (1.0.2-1) noble; urgency=medium
+
+  * Dark theme uses monochrome symbolic icons in the menus (light theme
+    keeps the colour ones).
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Sat, 26 Sep 2026 23:35:32 +0200
+
 joseflix-request (1.0.1-1) noble; urgency=medium
 
   * Wider poster size range (up to 240px) and debounced list rebuild
