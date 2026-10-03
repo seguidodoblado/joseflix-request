@@ -1,3 +1,10 @@
+joseflix-request (1.0.3-1) noble; urgency=medium
+
+  * The About dialog uses the standard GNOME About window, like
+    Telegraph Writer and Comic Identify.
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Sat, 03 Oct 2026 11:44:31 +0200
+
 joseflix-request (1.0.2-1) noble; urgency=medium
 
   * Dark theme uses monochrome symbolic icons in the menus (light theme
