@@ -1,5 +1,7 @@
 # Joseflix Request
 
+![release](https://img.shields.io/github/v/release/seguidodoblado/joseflix-request) ![license](https://img.shields.io/github/license/seguidodoblado/joseflix-request) ![last commit](https://img.shields.io/github/last-commit/seguidodoblado/joseflix-request) ![downloads](https://img.shields.io/github/downloads/seguidodoblado/joseflix-request/total) ![stars](https://img.shields.io/github/stars/seguidodoblado/joseflix-request?style=flat) ![issues](https://img.shields.io/github/issues/seguidodoblado/joseflix-request) ![language](https://img.shields.io/github/languages/top/seguidodoblado/joseflix-request)
+
 Aplicación de escritorio para gestionar las peticiones de películas y series del servidor Plex Joseflix.
 
 Última release: [v1.0.3-1](https://github.com/seguidodoblado/joseflix-request/releases/tag/v1.0.3-1)
@@ -11,9 +13,11 @@ Aplicación de escritorio para gestionar las peticiones de películas y series d
 - Peticionarios gestionables.
 - Estados: 📨 Solicitado, 🔎 Buscando, 📥 Descargado, 📤 Subido, ✅ Notificado y 🔧 Corregir.
 - Métodos de descarga: ❓ Sin método, ⬇️ JDownloader, 🧲 Transmission y 🐴 aMule.
-- Filtros por título, estado, tipo y peticionario.
-- Fichas editables y eliminación de registros.
-- Modos claro y oscuro.
+- Prioridad (🔴 Alta, 🟡 Normal y 🟢 Baja) y fecha de solicitud con calendario.
+- Filtros por título, estado, tipo, peticionario, prioridad y fecha, con la lista ordenada por fecha de solicitud (en cualquier sentido).
+- Fichas editables y eliminación de registros, y limpieza de las peticiones notificadas.
+- Copias de seguridad automáticas al abrir la aplicación (se conservan las 10 últimas) y restauración desde **Ajustes**.
+- Modos claro y oscuro, y tamaño de póster ajustable.
 
 ## Desarrollo
 
@@ -32,8 +36,9 @@ El paquete utiliza GTK 4 y PyGObject del sistema, y utiliza estas rutas:
 
 ```text
 /usr/bin/joseflix-request
-/usr/share/joseflix-request/
 /opt/joseflix-request/
+/usr/share/applications/joseflix-request.desktop
+/usr/share/icons/hicolor/scalable/apps/joseflix-request.svg
 ```
 
 Para construirlo:
