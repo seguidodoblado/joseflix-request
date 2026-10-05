@@ -8,11 +8,12 @@ en este archivo.
 ### Añadido
 - **Interfaz en español e inglés** (`gettext`): el español es el idioma fuente y el inglés está en `po/en.po`. Se elige en **Ajustes → Idioma…** (Sistema, Español o English; reinicia la aplicación). Con «Sistema» se usa el idioma del escritorio o `$LANGUAGE`. Los estados, tipos, métodos y prioridades se guardan en la base con su clave en español y solo cambia lo que se muestra
 - **Tema Sistema / Claro / Oscuro**: el menú «Tema» gana «Modo del sistema», que sigue el tema del escritorio. «Claro» y «Oscuro» eligen el tema GTK hermano conservando el acento
-- «Acerca de» con créditos de traducción, el correo del autor como enlace y la licencia GPL-3.0 predefinida de GTK
+- «Acerca de» con créditos de traducción, el correo del autor como enlace y la licencia GPL-3.0 o posterior predefinida de GTK
 - Pruebas (45), `ruff` y empaquetado comprobado con `lintian`; integración continua (`ci.yml`) y despliegue (`cd.yml`: al subir una etiqueta `vX.Y.Z` ejecuta el CI y, solo si pasa, deja la release en borrador con el mismo `.deb` que construyó el CI)
 - `README.en.md`, `PRIVACY`, `CONTRIBUTING`, `SECURITY`, `SUPPORT` y `CODE_OF_CONDUCT` en español e inglés, y este `CHANGELOG.md`
 
 ### Cambiado
+- La licencia pasa a **GPL-3.0 o posterior** (antes, solo versión 3), como en el resto de proyectos: `debian/copyright` (GPL-3+), `pyproject.toml`, README y «Acerca de»
 - El código pasa de un único fichero a un paquete `src/joseflix_request/`: la lógica (`config`, `store`, `tmdb`, `models`) separada de la interfaz, que queda en `ui/`
 - Empaquetado conforme a Debian: la aplicación se instala en `/usr/share/joseflix-request` (antes en `/opt/joseflix-request`), con `copyright`, `changelog.Debian.gz`, páginas de manual en inglés y español y `md5sums`; el `.deb` pasa lintian sin errores. El lanzador pasa a `joseflix-request-launcher`. La versión sale de `debian/changelog` y `build-deb.sh` comprueba que coincida con `pyproject.toml` y `__init__.py`
 - El identificador de la aplicación (`Gtk.Application`) pasa de `es.joseflix.Request` a `io.github.seguidodoblado.JoseflixRequest`, la forma que exige Flathub para proyectos alojados en GitHub; no cambia ningún dato guardado

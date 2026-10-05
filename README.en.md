@@ -49,4 +49,4 @@ Joseflix Request has no server or account of its own and does not collect data; 
 
 ## License
 
-This project is distributed under the GNU General Public License, version 3 (see `LICENSE`).
+This project is distributed under the GNU General Public License, version 3 or later (see `LICENSE`).

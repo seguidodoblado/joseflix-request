@@ -50,4 +50,4 @@ Joseflix Request no tiene servidor ni cuenta propios y no recoge datos; solo con
 
 ## Licencia
 
-Este proyecto se distribuye bajo la GNU General Public License, versión 3 (ver `LICENSE`).
+Este proyecto se distribuye bajo la GNU General Public License, versión 3 o posterior (ver `LICENSE`).

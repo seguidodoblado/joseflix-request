@@ -158,7 +158,7 @@ class App(Gtk.Application):
   confirm.add_button(_('Cancelar'),Gtk.ResponseType.CANCEL); confirm.add_button(_('Aceptar'),Gtk.ResponseType.OK); confirm.get_widget_for_response(Gtk.ResponseType.OK).add_css_class('save-action')
   confirm.connect('response',lambda dialog,response:(s.store.clear_notified(),dialog.close(),s.refresh()) if response==Gtk.ResponseType.OK else dialog.close()); confirm.present()
  def about(s):
-  d=Gtk.AboutDialog(transient_for=s.win,modal=True,program_name='Joseflix Request',version=__version__,authors=[f'{AUTHOR} <{AUTHOR_EMAIL}>'],copyright=f'© 2026 {AUTHOR}',comments=_('Gestor de peticiones para Joseflix (Plex): registra, prioriza y sigue las peticiones de películas y series.'),website=REPO_URL,website_label=REPO_URL.removeprefix('https://'),license_type=Gtk.License.GPL_3_0_ONLY,translator_credits=_('translator-credits'))
+  d=Gtk.AboutDialog(transient_for=s.win,modal=True,program_name='Joseflix Request',version=__version__,authors=[f'{AUTHOR} <{AUTHOR_EMAIL}>'],copyright=f'© 2026 {AUTHOR}',comments=_('Gestor de peticiones para Joseflix (Plex): registra, prioriza y sigue las peticiones de películas y series.'),website=REPO_URL,website_label=REPO_URL.removeprefix('https://'),license_type=Gtk.License.GPL_3_0,translator_credits=_('translator-credits'))
   if Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon('joseflix-request'): d.set_logo_icon_name('joseflix-request')
   elif LOGO.exists(): d.set_logo(Gdk.Texture.new_from_filename(str(LOGO)))
   d.add_credit_section(_('Datos de terceros'),['The Movie Database (TMDB) https://www.themoviedb.org/',_('Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB.')]); d.present()
