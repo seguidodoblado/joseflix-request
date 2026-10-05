@@ -1,0 +1,371 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the joseflix-request package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: joseflix-request 1.0.3\n"
+"Report-Msgid-Bugs-To: jose.antonio.seguido@gmail.com\n"
+"POT-Creation-Date: 2026-10-05 10:16+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: src/joseflix_request/models.py:23
+msgid "Solicitado"
+msgstr ""
+
+#: src/joseflix_request/models.py:23
+msgid "Buscando"
+msgstr ""
+
+#: src/joseflix_request/models.py:23
+msgid "Descargado"
+msgstr ""
+
+#: src/joseflix_request/models.py:24
+msgid "Subido"
+msgstr ""
+
+#: src/joseflix_request/models.py:24
+msgid "Notificado"
+msgstr ""
+
+#: src/joseflix_request/models.py:24
+msgid "Corregir"
+msgstr ""
+
+#: src/joseflix_request/models.py:25
+msgid "Película"
+msgstr ""
+
+#: src/joseflix_request/models.py:25
+msgid "Serie"
+msgstr ""
+
+#: src/joseflix_request/models.py:25 src/joseflix_request/ui/gui.py:97
+msgid "Sin método"
+msgstr ""
+
+#: src/joseflix_request/models.py:26
+msgid "Alta"
+msgstr ""
+
+#: src/joseflix_request/models.py:26
+msgid "Normal"
+msgstr ""
+
+#: src/joseflix_request/models.py:26
+msgid "Baja"
+msgstr ""
+
+#: src/joseflix_request/tmdb.py:18
+msgid "URL TMDB no válida"
+msgstr ""
+
+#: src/joseflix_request/tmdb.py:27
+msgid "Configura el token de TMDB desde Ajustes"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:30
+msgid "Editar petición"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:30 src/joseflix_request/ui/gui.py:31
+#: src/joseflix_request/ui/gui.py:86
+msgid "Nueva petición"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:31
+msgid "La sinopsis aparecerá al consultar TMDB."
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:33
+msgid "URL TMDB:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:33
+msgid "Enlace de descarga:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:35
+msgid "Fecha de solicitud:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:36
+msgid "Notas:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:37 src/joseflix_request/ui/gui.py:97
+msgid "Sin peticionario"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:37 src/joseflix_request/ui/gui.py:86
+msgid "Peticionario:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:38 src/joseflix_request/ui/gui.py:86
+msgid "Estado:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:39 src/joseflix_request/ui/gui.py:86
+msgid "Tipo:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:40
+msgid "Método de descarga:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:41 src/joseflix_request/ui/gui.py:86
+msgid "Prioridad:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:42 src/joseflix_request/ui/gui.py:48
+#: src/joseflix_request/ui/gui.py:113 src/joseflix_request/ui/gui.py:158
+#: src/joseflix_request/ui/gui.py:177
+msgid "Cancelar"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:42 src/joseflix_request/ui/gui.py:113
+msgid "Guardar"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:44
+msgid "Abrir enlace"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:46
+msgid "Eliminar"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:48
+#, python-brace-format
+msgid "¿Eliminar la petición «{title}»?"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:48 src/joseflix_request/ui/gui.py:158
+msgid "Aceptar"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:70
+msgid "Modo del sistema"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:70
+msgid "Modo claro"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:70
+msgid "Modo oscuro"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:72
+msgid "Tamaño de póster"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Joseflix — Peticiones"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Ajustes"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Tema"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Ayuda"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Configurar TMDB…"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Idioma…"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Gestionar peticionarios…"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Copia de seguridad ahora"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Restaurar copia de seguridad…"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Acerca de"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:85
+msgid "Limpiar notificados"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:86
+msgid "Buscar título"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:86
+msgid "Todos"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:86
+msgid "AAAA-MM-DD"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:86
+msgid "Fecha:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:107
+#, python-brace-format
+msgid "{count} petición"
+msgid_plural "{count} peticiones"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/joseflix_request/ui/gui.py:113
+msgid "Ajustes de TMDB"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:113
+msgid "Token de acceso de lectura de TMDB"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:115
+msgid "Gestionar peticionarios"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:115
+msgid "Nuevo nombre"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:119
+msgid "Crear"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:119
+msgid "Editar"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:119
+msgid "Borrar"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:123
+msgid "El nombre del peticionario no puede estar vacío"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:133
+#, python-brace-format
+msgid "¿Eliminar el peticionario «{name}»?"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:136
+#, python-brace-format
+msgid ""
+"Copia de seguridad creada:\n"
+"{dest}"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:136
+msgid "No hay base de datos que respaldar todavía."
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:140
+msgid "No hay copias de seguridad disponibles."
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:141
+msgid "Restaurar copia de seguridad"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:141
+msgid "Selecciona una copia de seguridad para restaurar:"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:143
+msgid "Restaurar"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:147
+msgid ""
+"Copia restaurada correctamente. La aplicación se cerrará; vuelve a abrirla."
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:151
+#, python-brace-format
+msgid ""
+"¿Restaurar «{name}»?\n"
+"\n"
+"Se sobrescribirán los datos actuales (se guarda antes una copia de seguridad "
+"del estado actual). La aplicación se cerrará para aplicar los cambios."
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:156
+msgid "No hay peticiones en estado Notificado."
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:157
+#, python-brace-format
+msgid "¿Eliminar {count} petición notificada?"
+msgid_plural "¿Eliminar {count} peticiones notificadas?"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/joseflix_request/ui/gui.py:161
+msgid ""
+"Gestor de peticiones para Joseflix (Plex): registra, prioriza y sigue las "
+"peticiones de películas y series."
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:161
+msgid "translator-credits"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:164
+msgid "Datos de terceros"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:164
+msgid ""
+"Este producto usa la API de TMDB pero no está avalado ni certificado por "
+"TMDB."
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:174 src/joseflix_request/ui/gui.py:175
+msgid "Idioma"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:175
+msgid "Sistema"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:176
+msgid "Los cambios se aplican reiniciando la aplicación."
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:177
+msgid "Aplicar y reiniciar"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:187
+msgid "Más recientes primero"
+msgstr ""
+
+#: src/joseflix_request/ui/gui.py:187
+msgid "Más antiguas primero"
+msgstr ""

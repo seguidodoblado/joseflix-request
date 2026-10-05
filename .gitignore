@@ -1,4 +1,10 @@
-.venv/
 .deb-stage/
-__pycache__/
 *.deb
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Traducciones compiladas (se generan con i18n-compile.sh; el .po/.pot sí se versiona)
+src/joseflix_request/i18n/*/LC_MESSAGES/*.mo

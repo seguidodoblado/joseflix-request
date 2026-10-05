@@ -1,7 +1,7 @@
-<p align="right"><a href="README.en.md">🇺🇸 English</a></p>
+<p align="right"><a href="README.md">🇪🇸 Español</a></p>
 
 <p align="center">
-  <img src="joseflix-request.svg" alt="Logotipo de Joseflix Request" width="128">
+  <img src="joseflix-request.svg" alt="Joseflix Request logo" width="128">
 </p>
 
 <h1 align="center">Joseflix Request</h1>
@@ -22,32 +22,31 @@
 </p>
 
 <p align="center">
-  Gestiona las peticiones de películas y series del servidor Plex Joseflix.
+  Manage the movie and series requests of the Plex server Joseflix.
 </p>
 
-Aplicación de escritorio (GTK 4 + PyGObject), de uso personal: sin servidor ni cuenta, todo ocurre en tu equipo.
+Desktop application (GTK 4 + PyGObject), for personal use: no server, no account, everything happens on your own machine.
 
-- **Consulta por URL de TMDB** y descarga del póster: título, año, tipo y sinopsis.
-- **Peticionarios** gestionables, con estados (📨 Solicitado, 🔎 Buscando, 📥 Descargado, 📤 Subido, ✅ Notificado y
-  🔧 Corregir), métodos de descarga (⬇️ JDownloader, 🧲 Transmission y 🐴 aMule), prioridad y fecha de solicitud con
-  calendario.
-- **Filtros** por título, estado, tipo, peticionario, prioridad y fecha, con la lista ordenada por fecha de
-  solicitud (en cualquier sentido).
-- **Fichas editables**, eliminación de registros y limpieza de las peticiones notificadas.
-- **Copias de seguridad automáticas** al abrir la aplicación (se conservan las 10 últimas) y restauración desde
-  **Ajustes**.
-- **Interfaz en español e inglés** (gettext), con selector de idioma en **Ajustes → Idioma…**; **tema Sistema, Claro
-  u Oscuro** y tamaño de póster ajustable.
+- **Look up by TMDB URL** and download the poster: title, year, type and synopsis.
+- **Manageable requesters**, with statuses (📨 Requested, 🔎 Searching, 📥 Downloaded, 📤 Uploaded, ✅ Notified and
+  🔧 Fix), download methods (⬇️ JDownloader, 🧲 Transmission and 🐴 aMule), priority and request date with a
+  calendar.
+- **Filters** by title, status, type, requester, priority and date, with the list sorted by request date (in
+  either direction).
+- **Editable records**, record deletion and clearing of notified requests.
+- **Automatic backups** when the application starts (the last 10 are kept) and restore from **Settings**.
+- **Interface in Spanish and English** (gettext), with a language selector in **Settings → Language…**; **System,
+  Light or Dark theme** and adjustable poster size.
 
-## Documentación
+## Documentation
 
-Toda la documentación —instalación, guía de uso, especificaciones técnicas, solución de problemas y más— está en
-la **[wiki del proyecto](https://github.com/seguidodoblado/joseflix-request/wiki)** (español e inglés).
+All documentation—installation, usage guide, technical specifications, troubleshooting and more—is on the
+**[project wiki](https://github.com/seguidodoblado/joseflix-request/wiki)** (Spanish and English).
 
-## Privacidad
+## Privacy
 
-Joseflix Request no tiene servidor ni cuenta propios y no recoge datos; solo consulta TMDB cuando se lo pides. Qué se guarda, dónde y con quién se comunica está en la **[política de privacidad](PRIVACY.md)**.
+Joseflix Request has no server or account of its own and does not collect data; it only queries TMDB when you ask it to. What is stored, where, and who it talks to is in the **[privacy policy](PRIVACY.en.md)**.
 
-## Licencia
+## License
 
-Este proyecto se distribuye bajo la GNU General Public License, versión 3 (ver `LICENSE`).
+This project is distributed under the GNU General Public License, version 3 (see `LICENSE`).
