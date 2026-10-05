@@ -1,3 +1,12 @@
+joseflix-request (1.1.0-1) noble; urgency=medium
+
+  * Interface in Spanish and English with a language selector,
+    System/Light/Dark theme, Debian-compliant packaging (installed in
+    /usr/share, passes lintian), real application ID, tests, CI and CD,
+    privacy policy and GPL-3.0-or-later license.
+
+ -- Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>  Mon, 05 Oct 2026 10:27:38 +0200
+
 joseflix-request (1.0.3-1) noble; urgency=medium
 
   * The About dialog uses the standard GNOME About window, like

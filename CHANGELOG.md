@@ -5,6 +5,8 @@ en este archivo.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-05
+
 ### Añadido
 - **Interfaz en español e inglés** (`gettext`): el español es el idioma fuente y el inglés está en `po/en.po`. Se elige en **Ajustes → Idioma…** (Sistema, Español o English; reinicia la aplicación). Con «Sistema» se usa el idioma del escritorio o `$LANGUAGE`. Los estados, tipos, métodos y prioridades se guardan en la base con su clave en español y solo cambia lo que se muestra
 - **Tema Sistema / Claro / Oscuro**: el menú «Tema» gana «Modo del sistema», que sigue el tema del escritorio. «Claro» y «Oscuro» eligen el tema GTK hermano conservando el acento
