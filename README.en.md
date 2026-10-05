@@ -10,7 +10,7 @@
   <a href="https://github.com/seguidodoblado/joseflix-request/releases"><img src="https://img.shields.io/github/v/release/seguidodoblado/joseflix-request" alt="release"></a>
   <a href="https://github.com/seguidodoblado/joseflix-request/actions/workflows/ci.yml"><img src="https://github.com/seguidodoblado/joseflix-request/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/seguidodoblado/joseflix-request/actions/workflows/cd.yml"><img src="https://github.com/seguidodoblado/joseflix-request/actions/workflows/cd.yml/badge.svg" alt="CD"></a>
-  <a href="https://github.com/seguidodoblado/joseflix-request/blob/main/LICENSE"><img src="https://img.shields.io/github/license/seguidodoblado/joseflix-request" alt="license"></a>
+  <a href="https://github.com/seguidodoblado/joseflix-request/blob/main/COPYING"><img src="https://img.shields.io/github/license/seguidodoblado/joseflix-request" alt="license"></a>
   <a href="https://github.com/seguidodoblado/joseflix-request/commits/main/"><img src="https://img.shields.io/github/last-commit/seguidodoblado/joseflix-request" alt="last commit"></a>
   <a href="https://github.com/seguidodoblado/joseflix-request/commits/main/"><img src="https://img.shields.io/github/commit-activity/t/seguidodoblado/joseflix-request" alt="total commits"></a>
   <a href="https://github.com/seguidodoblado/joseflix-request/releases"><img src="https://img.shields.io/github/downloads/seguidodoblado/joseflix-request/total" alt="downloads"></a>
@@ -49,4 +49,4 @@ Joseflix Request has no server or account of its own and does not collect data; 
 
 ## License
 
-This project is distributed under the GNU General Public License, version 3 or later (see `LICENSE`).
+This project is distributed under the GNU General Public License, version 3 or later (see `COPYING`).
