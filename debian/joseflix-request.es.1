@@ -1,0 +1,44 @@
+.TH JOSEFLIX\-REQUEST 1 "" "joseflix-request @VERSION@"
+.SH NOMBRE
+joseflix\-request \- gestiona peticiones de películas y series para un servidor Plex
+.SH SINOPSIS
+.B joseflix\-request
+.SH DESCRIPCIÓN
+.B joseflix\-request
+es una aplicación GTK para registrar, priorizar y seguir las peticiones de películas y series del
+servidor Plex Joseflix. Busca un título en The Movie Database (TMDB) a partir de su URL, descarga el
+póster y guarda el peticionario, el estado, el método de descarga, la prioridad y la fecha de solicitud
+de cada petición. También ofrece filtros, copias de seguridad automáticas de la base de datos y tema
+claro u oscuro.
+.PP
+Abre la interfaz gráfica. Para buscar títulos hace falta un token de acceso de lectura de TMDB, que se
+configura en
+.IR "Ajustes > Configurar TMDB" .
+.SH ARCHIVOS
+.TP
+.I $XDG_DATA_HOME/joseflix\-request/joseflix.sqlite3
+La base de datos de peticiones. Por defecto en
+.IR ~/.local/share .
+.TP
+.I $XDG_DATA_HOME/joseflix\-request/config.json
+Ajustes del usuario (token de TMDB, idioma, tema, tamaño de los pósters y orden).
+.TP
+.I $XDG_DATA_HOME/joseflix\-request/backups/
+Las diez últimas copias de seguridad de la base, que se hacen cada vez que arranca la aplicación.
+.TP
+.I $XDG_DATA_HOME/joseflix\-request/posters/
+Pósters descargados.
+.SH ENTORNO
+.TP
+.B LANGUAGE
+Idioma de la interfaz cuando está en «Sistema».
+.TP
+.B XDG_DATA_HOME
+Directorio base de los datos.
+.TP
+.B TMDB_API_KEY
+Token de TMDB que se usa cuando no hay uno guardado en los ajustes.
+.SH VÉASE TAMBIÉN
+Página del proyecto: https://github.com/seguidodoblado/joseflix\-request
+.SH AUTOR
+Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>

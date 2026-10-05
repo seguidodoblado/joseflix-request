@@ -1,0 +1,42 @@
+.TH JOSEFLIX\-REQUEST 1 "" "joseflix-request @VERSION@"
+.SH NAME
+joseflix\-request \- manage movie and series requests for a Plex server
+.SH SYNOPSIS
+.B joseflix\-request
+.SH DESCRIPTION
+.B joseflix\-request
+is a GTK application to register, prioritize and follow the movie and series requests of the Plex
+server Joseflix. It looks a title up in The Movie Database (TMDB) from its URL, downloads the poster,
+and keeps the requester, status, download method, priority and request date of each request. It also
+offers filters, automatic backups of the database and a light or dark theme.
+.PP
+It opens the graphical interface. Looking titles up needs a TMDB read access token, set in
+.IR "Settings > Configure TMDB" .
+.SH FILES
+.TP
+.I $XDG_DATA_HOME/joseflix\-request/joseflix.sqlite3
+The requests database. Defaults to
+.IR ~/.local/share .
+.TP
+.I $XDG_DATA_HOME/joseflix\-request/config.json
+User settings (TMDB token, language, theme, poster size and sort order).
+.TP
+.I $XDG_DATA_HOME/joseflix\-request/backups/
+The last ten backups of the database, made each time the application starts.
+.TP
+.I $XDG_DATA_HOME/joseflix\-request/posters/
+Downloaded posters.
+.SH ENVIRONMENT
+.TP
+.B LANGUAGE
+Interface language when it is set to \(lqSystem\(rq.
+.TP
+.B XDG_DATA_HOME
+Base directory for the data.
+.TP
+.B TMDB_API_KEY
+TMDB token used when none is saved in the settings.
+.SH SEE ALSO
+Project page: https://github.com/seguidodoblado/joseflix\-request
+.SH AUTHOR
+Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>

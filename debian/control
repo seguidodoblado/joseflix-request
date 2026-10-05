@@ -1,0 +1,16 @@
+Source: joseflix-request
+Section: video
+Priority: optional
+Maintainer: Jose Antonio Seguido Doblado <jose.antonio.seguido@gmail.com>
+Standards-Version: 4.6.0
+Build-Depends: debhelper-compat (= 13), gettext
+
+Package: joseflix-request
+Architecture: all
+Depends: ${misc:Depends}, python3, python3-gi, gir1.2-gtk-4.0
+Homepage: https://github.com/seguidodoblado/joseflix-request
+Description: Gestor de peticiones de películas y series para Joseflix
+ Aplicación GTK para registrar, priorizar y seguir las peticiones de
+ películas y series del servidor Plex Joseflix: consulta de fichas y
+ pósters en TMDB, peticionarios, estados, métodos de descarga,
+ filtros, copias de seguridad y tema claro u oscuro.

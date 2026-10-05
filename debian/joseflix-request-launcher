@@ -1,2 +1,3 @@
 #!/bin/bash
-exec -a joseflix-request python3 /opt/joseflix-request/joseflix_request.py "$@"
+export PYTHONPATH=/usr/share/joseflix-request
+exec -a joseflix-request python3 -m joseflix_request "$@"
