@@ -1,5 +1,3 @@
-<p align="right"><a href="README.en.md">🇺🇸 English</a></p>
-
 <p align="center">
   <img src="joseflix-request.svg" alt="Logotipo de Joseflix Request" width="128">
 </p>
@@ -20,6 +18,8 @@
   <a href="https://codetime.dev"><img alt="CodeTime Badge" src="https://shields.jannchie.com/endpoint?style=flat&color=0284c7&url=https%3A%2F%2Fcodetime.dev%2Fv3%2Fusers%2Fshield%3Fuid%3D36830"></a>
   <a href="https://wakatime.com/badge/github/seguidodoblado/joseflix-request"><img src="https://wakatime.com/badge/github/seguidodoblado/joseflix-request.svg" alt="wakatime"></a>
 </p>
+
+## 🇪🇸 Español
 
 <p align="center">
   Gestiona las peticiones de películas y series del servidor Plex Joseflix.
@@ -51,3 +51,37 @@ Joseflix Request no tiene servidor ni cuenta propios y no recoge datos; solo con
 ## Licencia
 
 Este proyecto se distribuye bajo la GNU General Public License, versión 3 o posterior (ver `COPYING`).
+
+---
+
+## 🇺🇸 English
+
+<p align="center">
+  Manage the movie and series requests of the Plex server Joseflix.
+</p>
+
+Desktop application (GTK 4 + PyGObject), for personal use: no server, no account, everything happens on your own machine.
+
+- **Look up by TMDB URL** and download the poster: title, year, type and synopsis.
+- **Manageable requesters**, with statuses (📨 Requested, 🔎 Searching, 📥 Downloaded, 📤 Uploaded, ✅ Notified and
+  🔧 Fix), download methods (⬇️ JDownloader, 🧲 Transmission and 🐴 aMule), priority and request date with a
+  calendar.
+- **Filters** by title, status, type, requester, priority and date, with the list sorted by request date (in
+  either direction).
+- **Editable records**, record deletion and clearing of notified requests.
+- **Automatic backups** when the application starts (the last 10 are kept) and restore from **Settings**.
+- **Interface in Spanish and English** (gettext), with a language selector in **Settings → Language…**; **System,
+  Light or Dark theme** and adjustable poster size.
+
+## Documentation
+
+All documentation—installation, usage guide, technical specifications, troubleshooting and more—is on the
+**[project wiki](https://github.com/seguidodoblado/joseflix-request/wiki)** (Spanish and English).
+
+## Privacy
+
+Joseflix Request has no server or account of its own and does not collect data; it only queries TMDB when you ask it to. What is stored, where, and who it talks to is in the **[privacy policy](PRIVACY.md#-english)**.
+
+## License
+
+This project is distributed under the GNU General Public License, version 3 or later (see `COPYING`).
